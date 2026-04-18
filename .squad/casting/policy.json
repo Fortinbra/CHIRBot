@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "default_strategy": "worktree-local",
+  "allowlist": [
+    {
+      "universe": "Star Fox",
+      "capacity": 8
+    }
+  ]
+}

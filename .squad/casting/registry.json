@@ -1,0 +1,44 @@
+[
+  {
+    "persistent_name": "Fox",
+    "universe": "Star Fox",
+    "created_at": "2026-04-18T23:36:12Z",
+    "legacy_named": false,
+    "status": "active"
+  },
+  {
+    "persistent_name": "Slippy",
+    "universe": "Star Fox",
+    "created_at": "2026-04-18T23:36:12Z",
+    "legacy_named": false,
+    "status": "active"
+  },
+  {
+    "persistent_name": "Falco",
+    "universe": "Star Fox",
+    "created_at": "2026-04-18T23:36:12Z",
+    "legacy_named": false,
+    "status": "active"
+  },
+  {
+    "persistent_name": "Peppy",
+    "universe": "Star Fox",
+    "created_at": "2026-04-18T23:36:12Z",
+    "legacy_named": false,
+    "status": "active"
+  },
+  {
+    "persistent_name": "Scribe",
+    "universe": null,
+    "created_at": "2026-04-18T23:36:12Z",
+    "legacy_named": false,
+    "status": "active"
+  },
+  {
+    "persistent_name": "Ralph",
+    "universe": null,
+    "created_at": "2026-04-18T23:36:12Z",
+    "legacy_named": false,
+    "status": "active"
+  }
+]
