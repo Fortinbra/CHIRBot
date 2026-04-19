@@ -17,11 +17,12 @@ Created `.github/copilot-instructions.md` to establish clear, repository-specifi
 
 ### Build Workflow (Falco)
 Confirmed build pipeline and Pico SDK assumptions.
-- **Command**: `mkdir -p build && cd build && cmake -G Ninja .. && cmake --build .`
+- **Command**: Shell-agnostic sequence: `cmake -S . -B build -G Ninja` then `cmake --build build`
 - **PIO Flow**: `blink.pio` → CMake `pico_generate_pio_header()` → `build/blink.pio.h` → `main.cpp`
 - **SDK Lock**: Board=`pimoroni_pico_plus2_w_rp2350`, SDK=2.2.0, ARM GCC 14.2
 - **No Test/Lint**: Bare-metal firmware with compile + device-level validation only
 - **Generated Artifacts**: `CHIRBot.{elf,hex,bin,uf2}` to `build/` directory
+- **Watchdog Hazard**: Firmware enables 100 ms watchdog, updates once at startup, then loops with 1000 ms sleep—will reboot unless watchdog is fed in loop or disabled.
 
 ### Validation Guidance (Peppy)
 Reviewed testing and validation strategy.
@@ -33,6 +34,13 @@ Reviewed testing and validation strategy.
   - DMA string copy correctness
 - **Toolchain**: Ninja generator (configured in `.vscode/settings.json`), CMake/Ninja pre-installed via Pico SDK extension
 - **VS Code Integration**: Pre-configured tasks for build, flash (picotool/OpenOCD), and debug
+
+### Architecture Stack Decisions (Approved)
+- **USB HID Stack**: TinyUSB (approved)
+- **MicroSD Library**: Custom TASD writer (deferred to implementation phase)
+- **Recording Trigger**: Menu system on display
+- **Clock Source**: Pico core timer (not host-provided)
+- **Watchdog Behavior**: Graceful failure (not hard reboot)
 
 ### Future Recommendations (Pending)
 - **Short-term**: Update Copilot instructions to clarify Ninja generator and pre-installed toolchain
