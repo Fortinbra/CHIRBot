@@ -1,6 +1,6 @@
 # firmware/modules/
 
-Input/output module firmware. Each module is an SPI subnode (RP2040/RP2350)
+Input/output module firmware. Each module is an SPI subnode (RP2350B)
 that converts between a native device protocol and TASD-packetized SPI data,
 docked board-to-board onto the core (no link cables).
 

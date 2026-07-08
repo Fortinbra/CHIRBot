@@ -2,7 +2,7 @@
 
 > **Status:** planned — no code yet.
 
-USB host input module (PIO-based USB host on RP2040/RP2350). Reads native USB
+USB host input module (PIO-based USB host on RP2350B). Reads native USB
 controllers and forwards input as TASD-packetized SPI data to the core.
 
 Target devices include Xbox 360/PS3 controllers, wired Switch Pro controllers,

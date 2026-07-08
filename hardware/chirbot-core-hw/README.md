@@ -4,7 +4,7 @@
 
 Hardware design for the CHIRBot core board. Expected major elements:
 
-- RP2040 or RP2350 (SPI main)
+- RP2350B (SPI main) + external QSPI flash
 - USB port to PC (power, configuration, input streaming)
 - microSD slot
 - Simple display + rudimentary buttons for on-device configuration

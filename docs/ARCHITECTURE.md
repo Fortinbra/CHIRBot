@@ -1,9 +1,11 @@
 # CHIRBot — Architecture & Repository Structure
 
-> **Status:** Draft — hardware designs are not finalized. The only finalized
-> technical decision is the use of the **Raspberry Pi Pico SDK** targeting the
-> **RP2040** and/or **RP2350** microcontrollers. Everything else in this
-> document is a working proposal subject to revision.
+> **Status:** Draft — hardware designs are not finalized. Finalized technical
+> decisions so far: the **Raspberry Pi Pico SDK** on the **RP2350B** as the
+> standard MCU for all boards ([design/0002](design/0002-mcu-selection-rp2350b.md)),
+> SPI as the module link, and board-to-board module docking
+> ([design/0001](design/0001-module-link-bus-and-connector.md)). Everything
+> else in this document is a working proposal subject to revision.
 
 ## 1. Project Overview
 
@@ -36,7 +38,7 @@ flowchart LR
         SD_IN[microSD recording<br/>TASD playback]
     end
 
-    subgraph Core["CHIRBot Core (RP2040/RP2350)"]
+    subgraph Core["CHIRBot Core (RP2350B)"]
         MATRIX[SPI Matrix Switch]
         DISP[Config display +<br/>simple controls]
         SD[(microSD<br/>TASD storage)]
@@ -62,17 +64,19 @@ flowchart LR
 
 | Component | MCU | Role |
 |---|---|---|
-| **Core** | RP2040/RP2350 (SPI main) | Matrix switch, USB to PC, microSD, display/controls, module power & management |
-| **Input module** | RP2040/RP2350 (SPI subnode) | Converts a native input protocol (USB host via PIO, GameCube/N64 3-wire, NES/SNES serial, PS/2, etc.) into TASD-packetized SPI data |
-| **Output module** | RP2040/RP2350 (SPI subnode) | Converts TASD-packetized SPI data into a native output protocol; owns the output-device poll edge (clock domain source) |
+| **Core** | RP2350B (SPI main) | Matrix switch, USB to PC, microSD, display/controls, module power & management |
+| **Input module** | RP2350B (SPI subnode) | Converts a native input protocol (USB host via PIO, GameCube/N64 3-wire, NES/SNES serial, PS/2, etc.) into TASD-packetized SPI data |
+| **Output module** | RP2350B (SPI subnode) | Converts TASD-packetized SPI data into a native output protocol; owns the output-device poll edge (clock domain source) |
 | **Visualization** | varies | Built-in display, dedicated vis output module, or PC app |
 | **Host software** | n/a (PC) | Configuration, virtual input streaming, visualization, replay management |
 
 ### 2.3 Key architectural decisions
 
-1. **Pico SDK everywhere (finalized).** All firmware (core and modules) is
-   built on the Raspberry Pi Pico SDK with CMake. Code should build for both
-   RP2040 and RP2350 where practical (`PICO_BOARD`/`PICO_PLATFORM` switchable).
+1. **Pico SDK everywhere (finalized), on a standard MCU.** All firmware (core
+   and modules) is built on the Raspberry Pi Pico SDK with CMake. Every board
+   uses the **RP2350B** — 48 GPIO, 8 ADC channels, 12 PIO state machines — as
+   the one-size-fits-all MCU
+   ([design/0002](design/0002-mcu-selection-rp2350b.md)).
 2. **SPI as the internal transport** *(confirmed — see
    [design/0001](design/0001-module-link-bus-and-connector.md))*. The core is
    the SPI main; modules are subnodes. Target end-to-end relay latency is ~1 ms
@@ -111,7 +115,7 @@ flowchart LR
 │  • PIO USB host, NES/SNES serial, GC/N64,    │
 │    PS/2, Genesis/Atari, BT radio, ...        │
 ├─────────────────────────────────────────────┤
-│ Pico SDK (RP2040 / RP2350)                   │
+│ Pico SDK (RP2350B)                           │
 └─────────────────────────────────────────────┘
 ```
 
@@ -199,12 +203,12 @@ Every firmware repo follows the same Pico SDK/CMake shape:
 
 ```
 chirbot-<component>/
-├── CMakeLists.txt                # pico_sdk_import, PICO_BOARD selectable
+├── CMakeLists.txt                # pico_sdk_import, PICO_PLATFORM=rp2350
 ├── src/
 ├── include/
 ├── lib/                          # chirbot-common, TASD (submodule or FetchContent)
 ├── test/                         # host-buildable unit tests where possible
-├── boards/                       # custom board headers (RP2040/RP2350 variants)
+├── boards/                       # custom RP2350B board headers
 └── README.md
 ```
 
@@ -225,8 +229,8 @@ chirbot-<component>/
 
 Tracked here until resolved (then recorded as decisions in `docs/design/`):
 
-- [ ] RP2040 vs RP2350 selection per component (cost vs. capability; RP2350
-      security features for USB output spoofing/auth scenarios?)
+- [x] ~~RP2040 vs RP2350 selection per component~~ — decided: RP2350B
+      everywhere ([design/0002](design/0002-mcu-selection-rp2350b.md))
 - [ ] Exact SPI electrical/timing budget to hit the ~1 ms relay target
       (PL022 subnode clock-ratio limit)
 - [ ] Docking connector family/part selection and module power budget — see

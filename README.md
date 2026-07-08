@@ -8,8 +8,8 @@ realtime visualization.
 
 This is the parent repo for the CHIRBot project. Components live here as
 folders and are promoted to standalone repos (linked as submodules) as they
-mature. All firmware is built on the [Raspberry Pi Pico SDK](https://github.com/raspberrypi/pico-sdk)
-targeting the RP2040/RP2350.
+mature. All firmware is built on the [Raspberry Pi Pico SDK](https://github.com/raspberrypi/pico-sdk);
+all boards use the RP2350B as the standard MCU.
 
 | Directory | Contents |
 |---|---|

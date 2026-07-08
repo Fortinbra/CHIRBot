@@ -1,7 +1,8 @@
 # firmware/
 
 Firmware for all CHIRBot components, built on the [Raspberry Pi Pico SDK](https://github.com/raspberrypi/pico-sdk)
-targeting the RP2040/RP2350.
+targeting the RP2350B (standard MCU for all boards — see
+[docs/design/0002](../docs/design/0002-mcu-selection-rp2350b.md)).
 
 | Directory | Purpose |
 |---|---|

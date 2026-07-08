@@ -3,8 +3,9 @@
 Hardware designs (KiCad projects, BOMs, fabrication outputs) for CHIRBot
 components.
 
-> **Status:** hardware designs are not finalized. Each design will be based
-> around the RP2040 or RP2350.
+> **Status:** hardware designs are not finalized. Every board is based on the
+> RP2350B (standard MCU — see
+> [docs/design/0002](../docs/design/0002-mcu-selection-rp2350b.md)).
 
 | Directory | Purpose |
 |---|---|

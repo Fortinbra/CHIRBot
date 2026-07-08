@@ -2,7 +2,7 @@
 
 > **Status:** planned — no code yet. Hardware design not finalized.
 
-Firmware for the CHIRBot core board (RP2040/RP2350). Responsibilities:
+Firmware for the CHIRBot core board (RP2350B). Responsibilities:
 
 - **SPI matrix switch (main)** — routes TASD-packetized input between sources
   (input module, PC stream, microSD playback) and sinks (output module,
