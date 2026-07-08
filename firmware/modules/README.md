@@ -2,7 +2,7 @@
 
 Input/output module firmware. Each module is an SPI subnode (RP2040/RP2350)
 that converts between a native device protocol and TASD-packetized SPI data,
-attached to the core via USB-C Debug Accessory Mode.
+docked board-to-board onto the core (no link cables).
 
 | Directory | Direction | Native protocol |
 |---|---|---|

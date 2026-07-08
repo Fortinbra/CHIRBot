@@ -49,10 +49,10 @@ flowchart LR
         SD_OUT[microSD recording<br/>TASD capture]
     end
 
-    HID -->|Input module<br/>USB-C DAM / SPI| MATRIX
+    HID -->|Input module<br/>docked / SPI| MATRIX
     PC_IN --> USB --> MATRIX
     SD_IN --> SD --> MATRIX
-    MATRIX -->|Output module<br/>USB-C DAM / SPI| OUT
+    MATRIX -->|Output module<br/>docked / SPI| OUT
     MATRIX --> VIS
     MATRIX --> SD
     DISP --- MATRIX
@@ -73,12 +73,16 @@ flowchart LR
 1. **Pico SDK everywhere (finalized).** All firmware (core and modules) is
    built on the Raspberry Pi Pico SDK with CMake. Code should build for both
    RP2040 and RP2350 where practical (`PICO_BOARD`/`PICO_PLATFORM` switchable).
-2. **SPI as the internal transport.** The core is the SPI main; modules are
-   subnodes. Target end-to-end relay latency is ~1 ms regardless of the native
-   protocols involved.
-3. **USB-C Debug Accessory Mode (DAM) module attachment.** Modules attach to
-   the core over USB-C connectors repurposed via DAM to carry SPI plus module
-   power, while preserving device safety if a normal USB device is plugged in.
+2. **SPI as the internal transport** *(confirmed — see
+   [design/0001](design/0001-module-link-bus-and-connector.md))*. The core is
+   the SPI main; modules are subnodes. Target end-to-end relay latency is ~1 ms
+   regardless of the native protocols involved.
+3. **Board-to-board module docking — no link cables** *(decided — see
+   [design/0001](design/0001-module-link-bus-and-connector.md); connector
+   family selection pending)*. Modules dock directly onto the core via a
+   board-to-board connector carrying SPI plus module power. The only cables
+   in a working setup are USB to the PC and the native input/output device
+   cables.
 4. **TASD as the data format.** The [TASD format](https://tasd.io) is used both
    for packetized input data over SPI and for storage of macros/runs on
    microSD. Encoding/decoding is handled by the
@@ -149,7 +153,7 @@ CHIRBot/                          # parent / meta repo
 │   ├── ARCHITECTURE.md           # this document
 │   ├── specs/
 │   │   ├── spi-matrix-protocol.md    # SPI link: framing, timing, discovery
-│   │   ├── module-interface.md       # USB-C DAM pinout, power, handshake
+│   │   ├── module-interface.md       # docking pinout, mechanicals, power, handshake
 │   │   ├── tasd-usage.md             # how CHIRBot uses/extends TASD
 │   │   └── clock-domains.md          # poll-edge / timing model
 │   ├── design/                   # design discussions, decisions (ADRs)
@@ -224,7 +228,10 @@ Tracked here until resolved (then recorded as decisions in `docs/design/`):
 - [ ] RP2040 vs RP2350 selection per component (cost vs. capability; RP2350
       security features for USB output spoofing/auth scenarios?)
 - [ ] Exact SPI electrical/timing budget to hit the ~1 ms relay target
-- [ ] USB-C DAM pin assignment and module power budget
+      (PL022 subnode clock-ratio limit)
+- [ ] Docking connector family/part selection and module power budget — see
+      [design/0001](design/0001-module-link-bus-and-connector.md) addendum
+- [ ] Standard module PCB outline, connector placement, and hot-swap policy
 - [ ] Validate the [Fortinbra/TASD](https://github.com/Fortinbra/TASD) library:
       test coverage against the TASD spec and real-world .tasd files, then tag
       a first release

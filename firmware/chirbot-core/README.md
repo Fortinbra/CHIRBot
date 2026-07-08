@@ -11,7 +11,7 @@ Firmware for the CHIRBot core board (RP2040/RP2350). Responsibilities:
   microSD exposure as mass storage
 - **microSD storage** — TASD macro/run recording and playback
 - **Config display + simple controls** — on-device recording/playback/settings
-- **Module management** — USB-C DAM attach/detach, power, handshake, config
+- **Module management** — docked module detection, power, handshake, config
 
 Depends on [chirbot-common](../chirbot-common/) and the
 [TASD library](../TASD/). See [docs/ARCHITECTURE.md](../../docs/ARCHITECTURE.md).
