@@ -1,0 +1,3 @@
+[submodule "firmware/TASD"]
+	path = firmware/TASD
+	url = https://github.com/Fortinbra/TASD.git

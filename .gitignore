@@ -1,0 +1,115 @@
+# CHIRBot parent repo .gitignore
+# Covers: C/C++, CMake, Pico SDK, KiCad, VS Code, Python, .NET
+
+# --- Build output ---
+build/
+builds/
+out/
+cmake-build-*/
+
+# --- CMake ---
+CMakeCache.txt
+CMakeFiles/
+CMakeUserPresets.json
+cmake_install.cmake
+CTestTestfile.cmake
+_deps/
+compile_commands.json
+install_manifest.txt
+
+# --- C/C++ objects and binaries ---
+*.o
+*.obj
+*.ko
+*.lo
+*.a
+*.la
+*.lib
+*.so
+*.so.*
+*.dylib
+*.dll
+*.exe
+*.out
+*.app
+*.gch
+*.pch
+
+# --- Pico SDK / embedded artifacts ---
+*.elf
+*.uf2
+*.hex
+*.bin
+*.map
+*.dis
+generated/
+pico_sdk_import.cmake.bak
+
+# --- KiCad ---
+# Auto-save and backup files
+*.kicad_pcb-bak
+*.kicad_sch-bak
+*.kicad_prl
+*.kicad_pcb.lck
+*.kicad_sch.lck
+*-backups/
+*.bak
+*.bck
+_autosave-*
+*-save.kicad_pcb
+*-save.kicad_sch
+fp-info-cache
+# Netlists and rebuildable outputs
+*.net
+*.d356
+# Exported fab outputs are committed intentionally in release folders only;
+# ignore loose exports at project roots
+gerbers/
+plot/
+
+# --- VS Code ---
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+!.vscode/*.code-snippets
+.history/
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+.venv/
+venv/
+.python-version
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+dist/
+
+# --- .NET ---
+bin/
+obj/
+*.user
+*.suo
+.vs/
+project.lock.json
+artifacts/
+TestResults/
+
+# --- OS cruft ---
+.DS_Store
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# --- Misc ---
+*.log
+*.tmp
+*.swp
+*~
