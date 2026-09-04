@@ -5,7 +5,11 @@ software. Planned documents:
 
 | Spec | Contents | Status |
 |---|---|---|
-| `spi-matrix-protocol.md` | SPI link: framing, timing budget (~1 ms relay), main/subnode roles, discovery | not started |
-| `module-interface.md` | Docking connector pinout, module PCB mechanicals, power budget, hot-swap policy, handshake/versioning | not started |
-| `tasd-usage.md` | How CHIRBot uses/extends the [TASD format](https://tasd.io) (rumble, motion control, ...) | not started |
-| `clock-domains.md` | Poll-edge timing model: output device owns the clock domain | not started |
+| [SPI matrix protocol](spi-matrix-protocol.md) | Framing, timing budget, main/subnode roles, discovery | outline |
+| [Module interface](module-interface.md) | Docking pinout, mechanicals, power, hot-swap policy, handshake/versioning | outline |
+| [TASD usage](tasd-usage.md) | How CHIRBot uses or extends the [TASD format](https://tasd.io/) | outline |
+| [Clock domains](clock-domains.md) | Poll-edge timing model and buffering behavior | outline |
+
+An **outline** names the contract and unresolved decisions but is not stable
+enough to implement against. Each document must move through draft review
+before it can be marked accepted.
