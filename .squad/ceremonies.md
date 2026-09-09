@@ -1,3 +1,0 @@
-# Ceremonies
-
-ceremonies: []
