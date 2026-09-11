@@ -16,7 +16,6 @@ endif()
 set(PICO_BOARD pimoroni_pga2350 CACHE STRING "Board type")
 
 cmake_minimum_required(VERSION 3.13)
-include($ENV{PICO_SDK_PATH}/external/CMakeLists.txt)
 
 project(chirbot)
 
