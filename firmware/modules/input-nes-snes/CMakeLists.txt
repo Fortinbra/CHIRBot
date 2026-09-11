@@ -17,18 +17,14 @@ target_include_directories(${INPUT_NES_SNES_TARGET} PRIVATE
 # Enable pico_stdlib
 target_link_libraries(${INPUT_NES_SNES_TARGET} PRIVATE
     pico_stdlib
-    pico_multicore
-    hardware_pio
     hardware_spi
+    chirbot_link_protocol
+    tasd
 )
 
 # Enable USB
 pico_enable_stdio_usb(${INPUT_NES_SNES_TARGET} 1)
 pico_enable_stdio_uart(${INPUT_NES_SNES_TARGET} 0)
-
-# Add TASD library
-add_subdirectory(../../TASD TASD)
-target_link_libraries(${INPUT_NES_SNES_TARGET} PRIVATE tasd)
 
 # Add chirbot-common when available
 # add_subdirectory(../../chirbot-common chirbot-common)

@@ -1,6 +1,6 @@
 # chirbot-common
 
-> **Status:** planned — no code yet.
+> **Status:** Prototype SPI link framing implemented.
 
 Shared firmware libraries consumed by the core and all module firmware, so the
 wire protocol can never drift between components:
@@ -14,6 +14,11 @@ wire protocol can never drift between components:
   reimplement TASD serialization
 
 Pure-logic code here should be host-buildable for unit testing on desktop.
+
+`chirbot_link_protocol` currently provides the shared fixed-size frame encoder,
+decoder, and CRC used by the core and NES input module. The provisional wire
+contract is documented in
+[spi-matrix-protocol.md](../../docs/specs/spi-matrix-protocol.md).
 
 Will be promoted to its own semver-tagged repo (`chirbot-common`) once it has
 real content. See [docs/ARCHITECTURE.md](../../docs/ARCHITECTURE.md).

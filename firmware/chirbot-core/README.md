@@ -1,6 +1,7 @@
 # chirbot-core
 
-> **Status:** planned — no code yet. Hardware design not finalized.
+> **Status:** First SPI-to-UART relay prototype implemented. Hardware design is
+> not finalized.
 
 Firmware for the CHIRBot core board (RP2350B). Responsibilities:
 
@@ -15,3 +16,8 @@ Firmware for the CHIRBot core board (RP2350B). Responsibilities:
 
 Depends on [chirbot-common](../chirbot-common/) and the
 [TASD library](../TASD/). See [docs/ARCHITECTURE.md](../../docs/ARCHITECTURE.md).
+
+The current image polls an input module over SPI0, validates and decodes its
+TASD frame, prints every packet over UART0, and forwards new frames over SPI1.
+See the [NES-to-UART scenario](../../docs/specs/nes-to-uart-scenario.md) for
+wiring, UF2 paths, and expected output.

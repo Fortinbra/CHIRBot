@@ -1,6 +1,6 @@
 # TASD usage
 
-> **Status:** Outline. Not yet implementable.
+> **Status:** Prototype mapping implemented for the NES-to-UART scenario.
 
 This specification will define how CHIRBot uses the
 [TASD format](https://tasd.io/) for recordings and how TASD concepts relate to
@@ -20,3 +20,28 @@ the live module link. Serialization is provided by the external
 
 CHIRBot-specific extensions should be proposed upstream and must not silently
 reuse keys assigned by the TASD specification.
+
+## Prototype live mapping
+
+Each SPI type-1 payload is a complete, independently parseable TASD document:
+
+1. Standard 7-byte TASD header.
+2. `PORT_CONTROLLER` for port 0 with controller type `NES_STANDARD` (`0x0101`).
+3. One `INPUT_MOMENT` for port 0.
+
+The input moment uses millisecond indexing from input-module boot. Its input is
+one active-high byte in NES serial order:
+
+| Bit | Button |
+| ---: | --- |
+| 0 | A |
+| 1 | B |
+| 2 | Select |
+| 3 | Start |
+| 4 | Up |
+| 5 | Down |
+| 6 | Left |
+| 7 | Right |
+
+An event is emitted on startup and whenever this byte changes. The live SPI
+envelope is defined separately in [SPI matrix protocol](spi-matrix-protocol.md).
