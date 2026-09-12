@@ -1,6 +1,7 @@
 # Clock domains
 
-> **Status:** Outline. Not yet implementable.
+> **Status:** Prototype NES/SNES latest-state behavior implemented; general
+> policy remains an outline.
 
 This specification will define how CHIRBot samples inputs and presents,
 records, and replays state when the output device owns the poll edge. The
@@ -19,3 +20,11 @@ system-level rule is described in [the architecture](../ARCHITECTURE.md).
 
 Examples should include at least NES/SNES serial polling and one asynchronous
 or USB-based protocol before this specification is accepted.
+
+## NES/SNES prototype behavior
+
+The output module caches the most recent complete, valid TASD input state. A
+console LATCH snapshots that cached value into the PIO serializer. A new SPI
+frame received during a native poll is queued for the next LATCH and does not
+change the in-progress shift sequence. Repeated console polls return the same
+state until the core forwards a newer sequence.

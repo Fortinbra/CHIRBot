@@ -1,6 +1,6 @@
 # TASD usage
 
-> **Status:** Prototype mapping implemented for the NES-to-UART scenario.
+> **Status:** Prototype NES/SNES live mapping implemented.
 
 This specification will define how CHIRBot uses the
 [TASD format](https://tasd.io/) for recordings and how TASD concepts relate to
@@ -45,3 +45,27 @@ one active-high byte in NES serial order:
 
 An event is emitted on startup and whenever this byte changes. The live SPI
 envelope is defined separately in [SPI matrix protocol](spi-matrix-protocol.md).
+
+### SNES output mapping
+
+The output module also accepts `SNES_STANDARD` (`0x0201`) with two active-high
+input bytes. Bits are shifted least-significant first in this provisional order:
+
+| Bit | Button |
+| ---: | --- |
+| 0 | B |
+| 1 | Y |
+| 2 | Select |
+| 3 | Start |
+| 4 | Up |
+| 5 | Down |
+| 6 | Left |
+| 7 | Right |
+| 8 | A |
+| 9 | X |
+| 10 | L |
+| 11 | R |
+| 12-15 | Inactive/reserved |
+
+The current input module emits NES data only. The SNES mapping is implemented
+for core playback and future SNES input support.

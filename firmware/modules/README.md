@@ -5,7 +5,7 @@ that converts between a native device protocol and TASD-packetized SPI data,
 docked board-to-board onto the core (no link cables).
 
 | Directory | Direction | Native protocol |
-|---|---|---|
+| --- | --- | --- |
 | [input-usb/](input-usb/) | Input | USB host (PIO) — modern/adaptive controllers |
 | [input-nes-snes/](input-nes-snes/) | Input | NES/SNES 5 V serial |
 | [input-gc-n64/](input-gc-n64/) | Input | GameCube/N64 3-wire |
