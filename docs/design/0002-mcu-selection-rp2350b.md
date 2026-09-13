@@ -6,9 +6,11 @@
 
 ## Decision
 
-All CHIRBot boards — the core and every input/output module — standardize on
-the **Raspberry Pi RP2350B** as the "one size fits all" MCU. The Pico SDK
-(already the project's only finalized technical decision) fully supports it.
+All active CHIRBot boards - the core and every input/output module -
+standardize on the **Raspberry Pi RP2350B** as the "one size fits all" MCU.
+Passive interconnect boards, including the module carrier defined by
+[design decision 0003](0003-carrier-and-multislot-bus-topology.md), do not
+require an MCU. The Pico SDK fully supports the RP2350B.
 
 ## Context
 
@@ -36,8 +38,9 @@ and [Raspberry Pi microcontroller documentation](https://www.raspberrypi.com/doc
 
 ## Rationale
 
-1. **GPIO headroom (48)**: the core needs SPI ×2 (input + output module
-   docks), microSD, display, buttons, and USB simultaneously; modules like
+1. **GPIO headroom (48)**: the core needs SPI ×2 (shared input and output
+  banks), eight chip selects, four input IRQs, reserved I2C, microSD, display,
+  buttons, and USB simultaneously; modules like
    the visualization or multi-connector retro boards benefit from wide
    native-signal fan-out plus the dock without pin gymnastics.
 2. **12 PIO state machines**: PIO is the workhorse for USB host, Joybus,

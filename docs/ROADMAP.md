@@ -9,7 +9,8 @@ modules interoperate.
 
 ## 0. Align the project baseline
 
-- [ ] Update chirbot.com to reflect RP2350B and board-to-board module docking;
+- [ ] Update chirbot.com to reflect RP2350B, the passive module carrier, and
+      board-to-board module slots;
       keep the longer design discussions as clearly labeled historical context
 - [ ] Choose hardware, documentation, and contribution licenses explicitly
 - [ ] Add contribution and security guidance before inviting broad contributions
@@ -18,15 +19,18 @@ modules interoperate.
 ## 1. Stabilize shared interfaces
 
 - [ ] Define the [module interface](specs/README.md): connector pinout, power
-      budget, mechanical envelope, retention, and power-off-only/hot-swap policy
+      budget, mechanical envelope, retention, power-off-only/hot-swap policy,
+      module descriptor fields, shared SPI/I2C rules, and per-slot CS/IRQ
 - [ ] Define the [SPI matrix protocol](specs/README.md): framing, transactions,
-      discovery, capabilities, version negotiation, error handling, and timing
+      core-initiated discovery, descriptor encoding, data-ready service,
+      capabilities, version negotiation, error handling, and timing
 - [ ] Define CHIRBot's [TASD usage](specs/README.md), separating live transport
       needs from file-storage semantics
 - [ ] Define the [clock-domain model](specs/README.md), including output poll
       edges, buffering, timestamps, and recording behavior
 - [ ] Turn the approximately 1 ms objective into a measurable latency budget
-      allocated across input sampling, transport, routing, and output response
+      allocated across input sampling, four-slot bank service, routing, and
+      output response
 
 ## 2. Prove one vertical slice
 
@@ -45,6 +49,7 @@ implementation begins.
 ## 3. Productize the proven path
 
 - [ ] Design the core and first module PCBs from the stabilized interface
+- [ ] Design and validate the passive four-input/four-output carrier PCB
 - [ ] Add repeatable firmware builds, tests, release artifacts, and flashing docs
 - [ ] Implement the minimum host configuration and TASD inspection workflow
 - [ ] Validate cost targets with sourced BOMs and small production quantities

@@ -16,6 +16,7 @@ target_link_libraries(${OUTPUT_NES_SNES_TARGET} PRIVATE
     pico_stdlib
     hardware_pio
     hardware_spi
+    chirbot_controller_tasd
     chirbot_link_protocol
     tasd
 )

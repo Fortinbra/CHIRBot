@@ -29,9 +29,11 @@ This module is one of the first vertical slices for CHIRBot. The NES/SNES protoc
 
 ### 2.2 Module docking
 
-- Board-to-board docking to core via 2.54 mm shrouded header pair
-- SPI signals: SCLK, MOSI, MISO, CS, IRQ/ready
-- Power: 5 V from core, local 3.3 V regulator
+- Board-to-board docking to an input slot on the passive carrier; connector family remains open
+- Shared input-bank SPI signals: SCLK, MOSI, MISO
+- Per-slot signals: CS and dedicated IRQ/ready
+- Reserved future I2C signals: SDA and SCL
+- Power: carrier-supplied module rail, voltage and budget pending; local 3.3 V regulation if the final interface supplies 5 V
 - No link cable; module PCB outline and connector placement defined in `docs/specs/module-interface.md`
 
 ### 2.3 RP2350B resources
@@ -45,7 +47,7 @@ This module is one of the first vertical slices for CHIRBot. The NES/SNES protoc
 
 ### 3.1 Project layout
 
-```
+```text
 input-nes-snes/
 ├── CMakeLists.txt
 ├── src/

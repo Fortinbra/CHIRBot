@@ -2,7 +2,9 @@
 
 - **Status:** Accepted (2026-07-08) — SPI confirmed as the module link bus;
   cabled connectors superseded by **board-to-board docking** (see Addendum).
-  Specific connector family selection pending.
+   The point-to-point and direct-to-core topology was superseded on 2026-09-12
+   by [design decision 0003](0003-carrier-and-multislot-bus-topology.md).
+   Specific connector family selection remains pending.
 - **Date:** 2026-07-07 (evaluation), 2026-07-08 (decision)
 - **Relates to:** [docs/ARCHITECTURE.md](../ARCHITECTURE.md) §2.3 (decisions 2 and 3), open questions §5
 
@@ -175,6 +177,11 @@ minimize mis-plug hazards.
 
 ## Addendum (2026-07-08) — Decision: SPI + board-to-board module docking
 
+> **Partially superseded:** The SPI and cable-free board-to-board decisions
+> remain accepted. Direct docking to the core and point-to-point production
+> links are replaced by the passive multislot carrier in
+> [design decision 0003](0003-carrier-and-multislot-bus-topology.md).
+
 ### Decisions
 
 1. **SPI is confirmed** as the core↔module link bus, per the evaluation above.
@@ -241,3 +248,39 @@ generic multi-source supply.
 - [ ] Module power budget at 5 V per module (drives contact current-rating
       verification)
 - [ ] Enclosure concept: how docked modules are supported and covered
+
+## Addendum (2026-09-12) — Decision: discovery and input-ready signaling
+
+### Decisions
+
+1. **The core is the sole SPI controller/main (master).** Every transfer is
+   initiated by the core. Modules are SPI peripherals/subnodes and never start
+   a bus transaction.
+2. **Every module must identify itself when queried.** Before exchanging TASD
+   data, the core requests a module descriptor containing at least its
+   input/output type, stable vendor and product identifiers, hardware and
+   firmware revisions, supported link-protocol versions, and capabilities.
+   The descriptor contracts are owned by
+   [module-interface.md](../specs/module-interface.md) and their wire encoding
+   and query transactions by
+   [spi-matrix-protocol.md](../specs/spi-matrix-protocol.md).
+3. **The production input dock has a dedicated data-ready/IRQ signal.** An
+   input module asserts this module-to-core signal while unread TASD data is
+   pending. The core then initiates the SPI read. Normal input delivery must
+   not require constant polling. The signal is level-sensitive so an event is
+   not lost while the core is busy.
+4. **Output modules need no data-ready signal for normal output.** The core
+   initiates output writes. A future general-purpose alert or fault signal may
+   reuse a reserved contact only if a later specification defines it.
+
+### Consequences
+
+- The earlier pin budget's optional `IRQ/ready` contact is now required for an
+  input dock. Its voltage, active level, pull state, and final contact number
+  remain part of connector selection.
+- Module presence alone is not module identity. The core must complete
+  discovery and compatibility checks before routing TASD data to or from a
+  module.
+- Prototype v1 remains a valid polling-only bench implementation, but it does
+  not satisfy the production module interface until discovery and data-ready
+  signaling are implemented.

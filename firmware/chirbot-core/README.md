@@ -12,12 +12,16 @@ Firmware for the CHIRBot core board (RP2350B). Responsibilities:
   microSD exposure as mass storage
 - **microSD storage** — TASD macro/run recording and playback
 - **Config display + simple controls** — on-device recording/playback/settings
-- **Module management** — docked module detection, power, handshake, config
+- **Module management** — initiate all SPI transactions; query docked module
+  descriptors; validate type, version, and capabilities; handle input
+  data-ready signals; manage module power and configuration
 
 Depends on [chirbot-common](../chirbot-common/) and the
 [TASD library](../TASD/). See [docs/ARCHITECTURE.md](../../docs/ARCHITECTURE.md).
 
-The current image polls an input module over SPI0, validates and decodes its
-TASD frame, prints every packet over UART0, and forwards new frames over SPI1.
+The current prototype image polls an input module over SPI0, validates and
+decodes its TASD frame, prints every packet over UART0, and forwards new frames
+over SPI1. It does not yet implement production discovery or input data-ready
+signaling.
 See the [NES-to-UART scenario](../../docs/specs/nes-to-uart-scenario.md) for
 wiring, UF2 paths, and expected output.

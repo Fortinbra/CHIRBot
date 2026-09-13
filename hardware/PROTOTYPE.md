@@ -1,16 +1,57 @@
-# Three-MCU architecture prototype
+# CHIRBot hardware prototype
 
-> **Status:** Planning document, not a production hardware specification.
+> **Status:** The NES input-module fixture is assembled; the core and output
+> fixtures remain planned. This is not a production hardware specification.
 > Product availability was researched on 2026-09-03 and should be checked
 > again before ordering. Electrical and mechanical decisions discovered during
 > this prototype must be captured in [specifications](../docs/specs/) or
 > [design decisions](../docs/design/) before they become project requirements.
 
-This prototype uses existing development hardware to exercise the intended
-CHIRBot architecture with three independent RP2350B nodes:
+## Current as-built input fixture
+
+As of 2026-09-12, the assembled hardware is an input-module bring-up fixture,
+not the complete three-node system. It consists of:
+
+| Qty | As-built item | Identification and purpose |
+| ---: | --- | --- |
+| 1 | PGA2350 | Pimoroni `PIM722`; runs the NES input-module firmware |
+| 1 set | Extra-tall pin headers | Raises the PGA2350 above the wire-wrap carrier |
+| 1 | Large protoboard | Mechanical carrier and point-to-point wiring field |
+| As needed | Wire-wrap wire | Signal and power interconnect on the carrier |
+| 1 | RJ45/8P8C breakout | Adapts the existing NES cable; not an Ethernet or module-link connection |
+| 1 | Existing NES cable | Connects a standard NES controller to the fixture |
+| 1 | [hiBCTR 4-channel bidirectional level-shifter board](https://www.amazon.com/dp/B0DSZ5KFKL) | Seller part `H1-HBB0064-20`, ASIN `B0DSZ5KFKL`; BSS138-based 3.3 V/5 V converter |
+| 1 | USB-C breakout board | PGA2350 USB/power access; exact board and CC resistor population not yet recorded |
+| 1 | Excamera Labs SPIDriver | Temporary SPI main for input-module slave testing |
+
+The carrier uses point-to-point wire wrapping rather than the perfboard,
+sockets, and jumper harnesses in the reference purchase list below. Record the
+PGA2350 orientation and each installed wire before changing the assembly.
+
+The RJ45 breakout is only an adapter for the existing NES cable. Its contact
+mapping, viewing orientation, cable colors, and breakout part number have not
+been documented. Determine and record the mapping by continuity before adding
+RJ45 contact numbers to this document. Do not connect this jack to Ethernet
+equipment.
+
+The installed hiBCTR level shifter is an unqualified bench exception, not the
+intended production interface. The seller identifies BSS138 MOSFETs, but the
+exact schematic, pull-up values, physical channel labels, installed channel
+mapping, and electrical performance remain unverified. Scope both sides of NES
+LATCH, CLOCK, and DATA before treating controller reads as valid.
+
+See [hardware/modules/README.md](modules/README.md) for the firmware pinout and
+as-built input-module BOM, and the
+[NES acceptance scenario](../docs/specs/nes-to-uart-scenario.md) for SPIDriver
+wiring and test limits.
+
+## Planned three-MCU prototype
+
+The complete prototype will use existing development hardware to exercise the
+intended CHIRBot architecture with three independent RP2350B nodes:
 
 ```text
-SNES controller
+NES controller
     |
     v
 PGA2350 input module
@@ -24,12 +65,12 @@ PGA2350 core + microSD + USB
 PGA2350 output module
     |
     v
-SNES console
+NES console
 ```
 
-The first vertical slice targets SNES because its serial protocol and console
-poll edge are well understood. NES uses a closely related protocol and can be
-added after the three-node SNES path works. Prototype wiring stands in for the
+The implemented vertical slice targets a standard NES controller. SNES uses a
+closely related protocol and is supported by the output data path, but physical
+SNES input polling is not implemented. Prototype wiring stands in for the
 eventual direct board-to-board docking interface.
 
 ## Prototype goals
@@ -45,10 +86,12 @@ eventual direct board-to-board docking interface.
 Display hardware, an enclosure, hot-swap, generalized discovery, USB host
 controllers, and the host GUI are intentionally outside this prototype.
 
-## Primary purchase list
+## Reference purchase list for the three-node prototype
+
+This table is a plan for completing the full system, not an as-built inventory.
 
 | Qty | Item | Vendor / identifier | Purpose |
-|---:|---|---|---|
+| ---: | --- | --- | --- |
 | 3 | [Pimoroni PGA2350](https://shop.pimoroni.com/products/pga2350) | Pimoroni `PIM722` | Input node, core, and output node |
 | 1 | [MicroSD SPI/SDIO breakout](https://www.adafruit.com/product/4682) | Adafruit `4682` | Native 3.3 V storage on the core |
 | 1 | [USB-C data breakout](https://www.adafruit.com/product/4090) | Adafruit `4090` | Core USB data and VBUS connection; includes CC resistors |
@@ -63,13 +106,13 @@ headers, buttons, or status LED. PSRAM uses GP47 through a cuttable chip-select
 trace. The board accepts power at `VB`, while all GPIO remains 3.3 V and is not
 5 V tolerant.
 
-## Native-interface translation
+## Target native-interface translation
 
 Buy one spare of each translator. Two of each are installed: one on the input
 node and one on the output node.
 
 | Qty | Part | Vendor / identifier | Role |
-|---:|---|---|---|
+| ---: | --- | --- | --- |
 | 3 | [SN74AHCT125N](https://www.digikey.com/en/products/detail/texas-instruments/SN74AHCT125N/375798) | TI `SN74AHCT125N`; DigiKey `296-4655-5-ND` | PDIP buffer powered at 5 V; accepts 3.3 V logic-high inputs |
 | 3 | [SN74LVC125AD](https://www.digikey.com/en/products/detail/texas-instruments/SN74LVC125AD/377409) | TI `SN74LVC125AD`; DigiKey `296-8453-5-ND` | SOIC buffer powered at 3.3 V with 5 V-tolerant inputs |
 | 1 pack | [SOIC-14 breakout PCBs](https://www.adafruit.com/product/1210) | Adafruit `1210` | Adapt the LVC125AD for hand-wired prototyping |
@@ -77,7 +120,7 @@ node and one on the output node.
 Signal assignments:
 
 | Node | 3.3 V to 5 V through AHCT125 | 5 V to 3.3 V through LVC125 |
-|---|---|---|
+| --- | --- | --- |
 | Input module | Controller `LATCH`, `CLOCK` | Controller `DATA` |
 | Output module | Emulated-controller `DATA` | Console `LATCH`, `CLOCK` |
 
@@ -86,20 +129,35 @@ TXS/TXB automatic-direction translators are not appropriate for these clocked
 push-pull signals. Tie every active-low output enable to a deliberate state,
 disable unused gates, and give every unused input a defined level.
 
+The current input fixture instead uses the hiBCTR `H1-HBB0064-20` four-channel
+bidirectional module, which the seller identifies as BSS138-based. Connect `LV`
+to PGA2350 `3V3`, `HV` to the regulated controller-side 5 V rail, and `GND` to
+the common controller/PGA2350 ground. Use separate paired channels for LATCH,
+CLOCK, and DATA, and verify each physical channel pairing by continuity.
+
+This module may work at the approximately 83 kHz NES clock used by the
+firmware, but its pull-up-based rising edges and the wire-wrap capacitance must
+be measured. The seller claims generic SPI support but provides no SPI clock,
+load, or rise-time rating. Successful operation with this fixture does not
+qualify the translator for the output module or for a production design.
+
 Standard NES/SNES `DATA` is driven push-pull. Open-collector details for PAL
 hardware and accessory pins must be investigated separately before claiming
 broad compatibility.
 
-## Carrier and interconnect hardware
+## Reference carrier and interconnect hardware
 
 | Qty | Item | Vendor / identifier | Purpose |
-|---:|---|---|---|
+| ---: | --- | --- | --- |
 | 1 pack | [Isolated-pad perfboard](https://www.adafruit.com/product/2670) | Adafruit `2670` | Three carrier boards |
 | 2 packs | [36-pin Swiss male headers](https://www.adafruit.com/product/3647) | Adafruit `3647` | PGA2350 carrier contacts |
 | 2 packs | [36-pin Swiss female sockets](https://www.adafruit.com/product/3646) | Adafruit `3646` | Removable PGA2350 mounting |
 | 1 pack | [6 mm tactile switches](https://www.adafruit.com/product/367) | Adafruit `367` | RUN/reset and BOOTSEL controls |
 | 2 | [20-way female/female jumper ribbon](https://www.adafruit.com/product/1950) | Adafruit `1950` | Temporary point-to-point SPI harnesses |
 | 1 set | [22 AWG solid-core hookup wire](https://www.adafruit.com/product/1311) | Adafruit `1311` | Carrier wiring and power distribution |
+
+The assembled input fixture uses a large protoboard, extra-tall PGA2350 pin
+headers, and wire-wrapped interconnects instead of the parts in this table.
 
 PGA2350 is a 25.4 mm square, 64-position module on a 2.54 mm grid, not a
 standard two-row Pico module. Dry-fit one complete socket and verify underside
@@ -124,7 +182,7 @@ harnesses are development fixtures, not the final module connector.
 Quantities include development spares.
 
 | Qty | Part | Vendor / identifier | Use |
-|---:|---|---|---|
+| ---: | --- | --- | --- |
 | 20 | [100 nF ceramic capacitor](https://www.digikey.com/en/products/detail/kemet/C315C104M5U5TA/817927) | KEMET `C315C104M5U5TA` | Local IC bypassing |
 | 10 | [100 uF, 10 V electrolytic capacitor](https://www.digikey.com/en/products/detail/panasonic-industry/EEU-FR1A101B/2504105) | Panasonic `EEU-FR1A101B`; DigiKey `P15316CT-ND` | Bulk capacitance at nodes and SD card |
 | 20 | [10 kohm resistor](https://www.digikey.com/en/products/detail/yageo/CFR-25JB-52-10K/338) | Yageo `CFR-25JB-52-10K` | Enable and default-state pulls |
@@ -230,3 +288,4 @@ Do not connect a real console until all of the following are true:
 - [RP2350 datasheet](https://pip.raspberrypi.com/documents/RP-008373-DS-rp2350-datasheet.pdf)
 - [SN74AHCT125 product page](https://www.ti.com/product/SN74AHCT125)
 - [SN74LVC125A product page](https://www.ti.com/product/SN74LVC125A)
+- [hiBCTR BSS138 level-shifter seller listing](https://www.amazon.com/dp/B0DSZ5KFKL)

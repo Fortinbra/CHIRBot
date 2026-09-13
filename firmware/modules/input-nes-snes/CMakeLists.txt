@@ -18,6 +18,7 @@ target_include_directories(${INPUT_NES_SNES_TARGET} PRIVATE
 target_link_libraries(${INPUT_NES_SNES_TARGET} PRIVATE
     pico_stdlib
     hardware_spi
+    chirbot_controller_tasd
     chirbot_link_protocol
     tasd
 )

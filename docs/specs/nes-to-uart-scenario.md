@@ -21,9 +21,15 @@ Flash these images after a top-level build:
 
 ## Bench wiring
 
-All GPIO signals are 3.3 V. Connect grounds between boards. Connect the NES
-controller only through the fixed-direction 3.3 V/5 V level shifters described
-in `hardware/PROTOTYPE.md`.
+PGA2350 and SPI GPIO signals are 3.3 V; the native NES side is nominally 5 V.
+Connect grounds between boards. The assembled input fixture currently uses an
+unqualified [hiBCTR four-channel BSS138 level shifter](https://www.amazon.com/dp/B0DSZ5KFKL)
+(`H1-HBB0064-20`, ASIN `B0DSZ5KFKL`). Connect its `LV` rail to PGA2350
+`3V3`, its `HV` rail to regulated controller-side 5 V, and its `GND` to common
+ground. The seller's generic SPI compatibility claim is not a measured speed or
+rise-time rating and does not qualify the NES LATCH/CLOCK waveforms.
+Fixed-direction buffers remain required for final electrical acceptance as described in
+[hardware/PROTOTYPE.md](../../hardware/PROTOTYPE.md).
 
 ### NES controller to input module
 
@@ -32,6 +38,36 @@ in `hardware/PROTOTYPE.md`.
 | GP2 | Output through 3.3 V to 5 V translator | LATCH |
 | GP3 | Output through 3.3 V to 5 V translator | CLOCK |
 | GP4 | Input through 5 V to 3.3 V translator | DATA |
+
+The NES cable reaches the input fixture through an RJ45/8P8C breakout. This is
+only a cable adapter, not Ethernet and not the CHIRBot module link. Verify the
+contact-to-signal mapping and connector orientation by continuity; do not rely
+on cable colors.
+
+### SPIDriver to input module
+
+An Excamera Labs SPIDriver can replace the core during initial SPI subnode
+testing. Use mode 0 and transfer exactly 64 bytes while CS remains asserted.
+
+| SPIDriver signal | Input PGA2350 | Direction |
+| --- | ---: | --- |
+| SCLK | GP18 | SPIDriver to input |
+| MOSI | GP19 | SPIDriver to input |
+| MISO | GP16 | Input to SPIDriver |
+| CS | GP17 | SPIDriver to input, active low |
+| GND | GND | Common reference |
+
+This table is the firmware-expected mapping, not a verified record of wire
+colors or breakout contacts. Confirm every connection by continuity. When the
+PGA2350 is powered through its USB-C breakout, leave both SPIDriver power
+outputs disconnected; connect only the four SPI signals and ground.
+
+SPIDriver's published sustained SPI rate is approximately 500 kbit/s, below
+the CHIRBot prototype contract of 2 MHz. A 64-byte transfer therefore takes at
+least 1.024 ms before USB and command overhead. Use it to validate slave
+framing, full-duplex data, chip-select behavior, and CRC contents at reduced
+speed. It cannot validate the 2 MHz clock, 1 ms poll interval, latency, or
+signal-integrity requirements.
 
 ### Input module to core
 
@@ -89,6 +125,22 @@ join console 5 V to system 5 V during this prototype test; connect grounds.
    prints each TASD packet, and forwards the frame to SPI1.
 5. The output module validates the frame and caches its state. On each console
    latch it snapshots that state and shifts active-low DATA locally from PIO.
+
+## Automated transport check
+
+The desktop controller-pipeline test executes the production TASD codec and
+CHIRBot link framing for both NES and SNES states. It verifies the input-side
+document, core-style frame forwarding, output-side decoding, CRC rejection,
+and controller input-size validation:
+
+```powershell
+cmake -S firmware/chirbot-common -B build/host-chirbot-common
+cmake --build build/host-chirbot-common --config Debug
+ctest --test-dir build/host-chirbot-common -C Debug --verbose
+```
+
+This check covers the digital transport contract. The bench test below remains
+required to validate GPIO timing, level shifting, and console compatibility.
 
 Example UART output after pressing A:
 

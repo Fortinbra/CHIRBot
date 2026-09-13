@@ -20,7 +20,7 @@ private:
     void handle_spi_request();
     
     // TASD packet handling
-    void encode_tasd_packet(uint16_t controller_data);
+    bool encode_tasd_packet(uint16_t controller_data);
 
     uint8_t tx_frame_[CHIRBOT_LINK_FRAME_SIZE];
     uint8_t rx_frame_[CHIRBOT_LINK_FRAME_SIZE];

@@ -69,3 +69,7 @@ input bytes. Bits are shifted least-significant first in this provisional order:
 
 The current input module emits NES data only. The SNES mapping is implemented
 for core playback and future SNES input support.
+
+The shared `chirbot_controller_tasd` codec owns this live controller-state
+contract. Input and output firmware use the same implementation, and its host
+pipeline test verifies NES and SNES documents through CHIRBot link framing.

@@ -2,7 +2,18 @@
 
 Input/output module firmware. Each module is an SPI subnode (RP2350B)
 that converts between a native device protocol and TASD-packetized SPI data,
-docked board-to-board onto the core (no link cables).
+connected board-to-board to one slot on the passive module carrier (no link
+cables). Up to four input and four output modules share direction-specific SPI
+banks, with one core-controlled chip select per slot.
+
+Each module has one data-path responsibility: an input module translates one
+controller protocol into TASD, while an output module translates TASD into one
+console-facing protocol. Mapping, routing, recording, playback, and policy stay
+in the core. All modules return a self-description record when the core queries
+them. Input modules also assert a dedicated data-ready signal while unread TASD
+data is pending; the core remains the sole initiator of all SPI transfers. A
+module must keep MISO high-impedance whenever its CS is inactive. Reserved I2C
+pins are not used by the current firmware contract.
 
 | Directory | Direction | Native protocol |
 | --- | --- | --- |

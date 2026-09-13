@@ -96,14 +96,20 @@ void print_tasd_event(uint32_t sequence, const tasd_packet_t &packet)
     std::printf("\r\n");
 }
 
-void print_tasd_document(uint32_t sequence, const uint8_t *payload, uint16_t length)
+bool inspect_tasd_document(uint32_t sequence, const uint8_t *payload, uint16_t length)
 {
     tasd_header_t header;
     const tasd_result_t header_result = tasd_read_header(payload, length, &header);
     if (header_result != TASD_OK) {
         std::printf("[TASD seq=%" PRIu32 "] invalid header: %d\r\n",
                     sequence, header_result);
-        return;
+        return false;
+    }
+    if (header.version != TASD_VERSION || header.g_keylen != TASD_G_KEYLEN) {
+        std::printf("[TASD seq=%" PRIu32
+                    "] unsupported header: version=%u keylen=%u\r\n",
+                    sequence, header.version, header.g_keylen);
+        return false;
     }
 
     tasd_reader_t reader;
@@ -116,7 +122,9 @@ void print_tasd_document(uint32_t sequence, const uint8_t *payload, uint16_t len
     }
     if (result != TASD_ERR_END) {
         std::printf("[TASD seq=%" PRIu32 "] parse error: %d\r\n", sequence, result);
+        return false;
     }
+    return true;
 }
 
 }  // namespace
@@ -152,8 +160,10 @@ int main()
 
             if (frame.type == CHIRBOT_LINK_FRAME_TASD &&
                 (!have_sequence || frame.sequence != last_sequence)) {
-                print_tasd_document(frame.sequence, frame.payload, frame.payload_length);
-                forward_frame(received);
+                if (inspect_tasd_document(frame.sequence, frame.payload,
+                                          frame.payload_length)) {
+                    forward_frame(received);
+                }
                 last_sequence = frame.sequence;
                 have_sequence = true;
             }

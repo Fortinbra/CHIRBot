@@ -2,13 +2,13 @@
 
 #include <cstdio>
 
+#include "chirbot/controller_tasd.h"
 #include "chirbot/link_protocol.h"
 #include "controller_output.pio.h"
 #include "hardware/gpio.h"
 #include "hardware/pio.h"
 #include "hardware/spi.h"
 #include "pico/stdlib.h"
-#include "tasd.h"
 
 namespace {
 
@@ -54,6 +54,7 @@ void start_controller_profile(ControllerProfile profile)
 
     sm_config_set_out_pins(&config, kConsoleDataPin, 1);
     sm_config_set_set_pins(&config, kConsoleDataPin, 1);
+    sm_config_set_in_pins(&config, kConsoleLatchPin);
     sm_config_set_out_shift(&config, true, false, 32);
 
     pio_gpio_init(controller_pio, kConsoleDataPin);
@@ -65,70 +66,6 @@ void start_controller_profile(ControllerProfile profile)
     pio_sm_put_blocking(controller_pio, controller_sm, wire_state);
     pio_sm_set_enabled(controller_pio, controller_sm, true);
     active_profile = profile;
-}
-
-bool decode_tasd_state(const chirbot_link_frame_view_t &frame,
-                       ControllerProfile *profile, uint32_t *pressed_state)
-{
-    tasd_header_t header;
-    if (tasd_read_header(frame.payload, frame.payload_length, &header) != TASD_OK) {
-        return false;
-    }
-
-    ControllerProfile decoded_profile = active_profile;
-    bool have_profile = false;
-    bool have_input = false;
-    uint32_t input_length = 0;
-    uint32_t decoded_state = 0;
-    tasd_reader_t reader;
-    tasd_reader_init(&reader, frame.payload, frame.payload_length, &header);
-
-    tasd_packet_t packet;
-    tasd_result_t result;
-    while ((result = tasd_reader_next(&reader, &packet)) == TASD_OK) {
-        if (packet.key == TASD_KEY_PORT_CONTROLLER) {
-            tasd_pkt_port_controller_t controller;
-            if (tasd_decode_port_controller(&packet, &controller) != TASD_OK ||
-                controller.port != 0) {
-                return false;
-            }
-            if (controller.type == TASD_CTRL_NES_STANDARD) {
-                decoded_profile = ControllerProfile::Nes;
-            } else if (controller.type == TASD_CTRL_SNES_STANDARD) {
-                decoded_profile = ControllerProfile::Snes;
-            } else {
-                return false;
-            }
-            have_profile = true;
-        } else if (packet.key == TASD_KEY_INPUT_MOMENT) {
-            tasd_pkt_input_moment_t input;
-            if (tasd_decode_input_moment(&packet, &input) != TASD_OK || input.port != 0) {
-                return false;
-            }
-            if (input.inputs_len == 1u) {
-                decoded_state = input.inputs[0];
-                input_length = 1;
-                have_input = true;
-            } else if (input.inputs_len == 2u) {
-                decoded_state = input.inputs[0] | ((uint32_t)input.inputs[1] << 8u);
-                input_length = 2;
-                have_input = true;
-            } else {
-                return false;
-            }
-        }
-    }
-
-    if (result != TASD_ERR_END || !have_profile || !have_input) {
-        return false;
-    }
-    if ((decoded_profile == ControllerProfile::Nes && input_length != 1u) ||
-        (decoded_profile == ControllerProfile::Snes && input_length != 2u)) {
-        return false;
-    }
-    *profile = decoded_profile;
-    *pressed_state = decoded_state;
-    return true;
 }
 
 }  // namespace
@@ -165,11 +102,18 @@ int main()
             continue;
         }
 
-        ControllerProfile profile;
-        uint32_t pressed_state;
-        if (!decode_tasd_state(frame, &profile, &pressed_state)) {
+        chirbot_controller_state_t state;
+        if (chirbot_controller_tasd_decode(frame.payload, frame.payload_length,
+                                           &state) != CHIRBOT_CONTROLLER_TASD_OK ||
+            state.port != 0u) {
             continue;
         }
+
+        const ControllerProfile profile = state.inputs_length == 1u
+                                              ? ControllerProfile::Nes
+                                              : ControllerProfile::Snes;
+        const uint32_t pressed_state = state.inputs[0] |
+                                       ((uint32_t)state.inputs[1] << 8u);
 
         wire_state = ~pressed_state;
         if (profile != active_profile) {

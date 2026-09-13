@@ -5,17 +5,17 @@
 poll:
     pull noblock
     mov x, osr
-    wait 1 gpio 2
+    wait 1 pin 0
     mov osr, x
     set y, 6
     out pins, 1
 bitloop:
-    wait 1 gpio 3
-    wait 0 gpio 3
+    wait 1 pin 1
+    wait 0 pin 1
     out pins, 1
     jmp y-- bitloop
     set pins, 1
-    wait 0 gpio 2
+    wait 0 pin 0
     jmp poll
 .wrap
 
@@ -26,16 +26,16 @@ bitloop:
 poll:
     pull noblock
     mov x, osr
-    wait 1 gpio 2
+    wait 1 pin 0
     mov osr, x
     set y, 14
     out pins, 1
 bitloop:
-    wait 1 gpio 3
-    wait 0 gpio 3
+    wait 1 pin 1
+    wait 0 pin 1
     out pins, 1
     jmp y-- bitloop
     set pins, 1
-    wait 0 gpio 2
+    wait 0 pin 0
     jmp poll
 .wrap

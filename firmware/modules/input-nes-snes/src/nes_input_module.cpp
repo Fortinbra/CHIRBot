@@ -18,8 +18,7 @@ void NESInputModule::init() {
 
 void NESInputModule::run() {
     const uint16_t data = read_controller();
-    if (!frame_ready_ || data != last_controller_data_) {
-        encode_tasd_packet(data);
+    if ((!frame_ready_ || data != last_controller_data_) && encode_tasd_packet(data)) {
         last_controller_data_ = data;
         frame_ready_ = true;
     }
