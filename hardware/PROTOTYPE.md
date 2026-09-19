@@ -244,6 +244,67 @@ is acceptable for initial bring-up, but the final prototype should isolate SD
 traffic from real-time module traffic so card latency or a stuck MISO cannot
 disturb relay behavior.
 
+The core display added for on-device configuration is a fourth, non-real-time
+relationship. `spi0` and `spi1` are already committed to the input and output
+module links, so drive the display from a PIO SPI instance rather than
+sharing a module-link chip select.
+
+## Wiring color reference
+
+Six wire colors are available on the bench: black, red, yellow, green, white,
+purple. The same color always carries the same role on every harness; only
+the physical connector tells you which bus a wire belongs to.
+
+| Color | Role |
+| --- | --- |
+| Black | Ground |
+| Red | Power (`VCC`/`VB`), or reserved where a harness carries no power |
+| Yellow | Clock (`SCLK`/`SCL`) |
+| Green | Core-to-peripheral data (`MOSI`/`SDA`) |
+| White | Peripheral-to-core data (`MISO`), or a secondary control line where a bus has no `MISO` |
+| Purple | Chip select (`CSn`/`CS`) |
+
+### Input module and output module SPI harnesses
+
+Both harnesses carry the same five signals and no power — module power comes
+from the separate branch-fused 5 V rail in the power topology above, not
+through the SPI wires. Red is reserved on these harnesses for the future
+input data-ready/IRQ signal from
+[design decision 0001's discovery addendum](../docs/design/0001-module-link-bus-and-connector.md).
+
+| Color | Signal | Input harness (core GPIO — module GPIO) | Output harness (core GPIO — module GPIO) |
+| --- | --- | --- | --- |
+| Yellow | SCLK | GP18 — GP18 | GP14 — GP18 |
+| Green | MOSI | GP19 — GP19 | GP15 — GP16 |
+| White | MISO | GP16 — GP16 | GP12 — GP19 |
+| Purple | CSn | GP17 — GP17 | GP13 — GP17 |
+| Black | GND | GND — GND | GND — GND |
+| Red | *(reserved, not yet wired)* | — | — |
+
+### Core display bus (ST7735, 80x160, 3.3 V, SPI)
+
+A separate PIO SPI bus, independent of the two module-link harnesses above.
+`RES` and `BLK` reuse the yellow and purple wires already used for `SCL` and
+`CS` on this same bus — flag the reused wires with a piece of tape or
+heat-shrink at both ends so they aren't confused with the primary SCL/CS
+wires.
+
+| Color | Signal | Core pin | Display pin |
+| --- | --- | --- | --- |
+| Yellow | SCL (clock) | GP20 | SCL |
+| Green | SDA (MOSI) | GP21 | SDA |
+| Purple | CS | GP22 | CS |
+| White | DC | GP26 | DC |
+| Yellow (flagged) | RES | GP24 | RES |
+| Purple (flagged) | BLK | GP25 | BLK |
+| Black | GND | GND | GND |
+| Red | VCC | 3V3 | VCC |
+
+Verify GP20/GP21/GP22/GP24/GP25/GP26 are free on your specific PGA2350 board
+against the
+[Pimoroni pinout diagram](https://cdn.shopify.com/s/files/1/0174/1800/files/pga2350_pinout_diagram.pdf?v=1723124465)
+before wiring.
+
 ## Assembly sequence
 
 1. Build one PGA2350 carrier and verify socket fit, power, RUN, BOOTSEL, SWD,

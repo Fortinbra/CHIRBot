@@ -20,6 +20,7 @@ target_link_libraries(${INPUT_NES_SNES_TARGET} PRIVATE
     hardware_spi
     chirbot_controller_tasd
     chirbot_link_protocol
+    chirbot_spi_subnode
     tasd
 )
 

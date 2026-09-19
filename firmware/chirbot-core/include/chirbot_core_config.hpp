@@ -16,3 +16,12 @@ constexpr uint kOutputMisoPin = 12;
 constexpr uint kOutputChipSelectPin = 13;
 constexpr uint kOutputClockPin = 14;
 constexpr uint kOutputMosiPin = 15;
+
+// Core config display (ST7735, bit-banged bus; see hardware/PROTOTYPE.md
+// "Core display bus").
+constexpr uint kDisplayClockPin = 20;
+constexpr uint kDisplayMosiPin = 21;
+constexpr uint kDisplayChipSelectPin = 22;
+constexpr uint kDisplayResetPin = 24;
+constexpr uint kDisplayBacklightPin = 25;
+constexpr uint kDisplayDataCommandPin = 26;

@@ -28,6 +28,23 @@ Design goals (from [chirbot.com](https://chirbot.com/)):
 - On-device microSD storage for recordings, exposed to the PC via USB
 - Cost targets: < $100 for the core, < $40 per module
 
+### 1.1 Terminology
+
+Input events are described with these terms throughout the project. Use them
+precisely in documentation, specs, commit messages, and code identifiers.
+
+| Term | Meaning |
+| --- | --- |
+| **Button press** | A complete press *and* release. Self-contained — no follow-up event is implied. |
+| **Button hold** | A press *separated* from its release. Obligates a matching **button release** later. |
+| **Button press and hold** | Synonym for **button hold**. |
+| **Button release** | The release half of a **button hold**. |
+
+The distinction matters because a **press** is one indivisible action from the
+consumer's point of view, while a **hold** leaves the input asserted and the
+state machine owing a release. "Press" must never be used to mean "the moment
+the button goes down" — that is the start of a **hold**.
+
 ## 2. System Architecture
 
 ### 2.1 High-level block diagram

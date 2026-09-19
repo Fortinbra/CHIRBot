@@ -1,5 +1,7 @@
 add_executable(chirbot_core
 	src/main.cpp
+	src/st7735_display.cpp
+	src/splash_screen.cpp
 )
 
 target_include_directories(chirbot_core PRIVATE

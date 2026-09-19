@@ -27,4 +27,7 @@ private:
     uint16_t last_controller_data_;
     uint32_t sequence_;
     bool frame_ready_;
+    uint8_t demo_index_;
+    bool demo_held_;
+    uint64_t demo_next_step_us_;
 };

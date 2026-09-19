@@ -27,6 +27,22 @@ target_include_directories(chirbot_controller_tasd PUBLIC
 
 target_link_libraries(chirbot_controller_tasd PUBLIC tasd)
 
+# Pico-only: depends on the SDK's SPI/GPIO HAL, so it is skipped for host builds.
+if(TARGET hardware_spi)
+    add_library(chirbot_spi_subnode STATIC
+        src/spi_subnode.c
+    )
+
+    target_include_directories(chirbot_spi_subnode PUBLIC
+        ${CMAKE_CURRENT_SOURCE_DIR}/include
+    )
+
+    target_link_libraries(chirbot_spi_subnode PUBLIC
+        pico_stdlib
+        hardware_spi
+    )
+endif()
+
 if(CHIRBOT_COMMON_BUILD_TESTS)
     add_subdirectory(tests)
 endif()

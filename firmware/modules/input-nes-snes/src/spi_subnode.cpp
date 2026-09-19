@@ -1,4 +1,5 @@
 #include "nes_input_module.hpp"
+#include "chirbot/spi_subnode.h"
 #include <hardware/spi.h>
 #include <pico/stdlib.h>
 
@@ -27,5 +28,6 @@ void NESInputModule::setup_spi() {
 }
 
 void NESInputModule::handle_spi_request() {
-    spi_write_read_blocking(kCoreSpi, tx_frame_, rx_frame_, CHIRBOT_LINK_FRAME_SIZE);
+    chirbot_spi_subnode_transfer(kCoreSpi, kCoreChipSelectPin, tx_frame_,
+                                 rx_frame_, CHIRBOT_LINK_FRAME_SIZE);
 }

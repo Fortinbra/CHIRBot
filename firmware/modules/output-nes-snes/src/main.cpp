@@ -1,14 +1,17 @@
 #include "output_module_config.hpp"
 
+#include <cinttypes>
 #include <cstdio>
 
 #include "chirbot/controller_tasd.h"
 #include "chirbot/link_protocol.h"
+#include "chirbot/spi_subnode.h"
 #include "controller_output.pio.h"
 #include "hardware/gpio.h"
 #include "hardware/pio.h"
 #include "hardware/spi.h"
 #include "pico/stdlib.h"
+#include "tasd.h"
 
 namespace {
 
@@ -68,6 +71,38 @@ void start_controller_profile(ControllerProfile profile)
     active_profile = profile;
 }
 
+void print_button_state(uint32_t sequence, const chirbot_controller_state_t &state)
+{
+    static const char *const kNesNames[] = {
+        "A", "B", "Select", "Start", "Up", "Down", "Left", "Right"
+    };
+
+    std::printf("[OUT seq=%" PRIu32 " port=%u type=0x%04x index=%" PRIu64 "] ",
+                sequence, state.port, state.controller_type, state.index);
+
+    if (state.controller_type != TASD_CTRL_NES_STANDARD) {
+        // Only the NES bit layout is named here; anything else prints raw.
+        std::printf("raw=");
+        for (uint8_t index = 0; index < state.inputs_length; ++index) {
+            std::printf("%02x", state.inputs[index]);
+        }
+        std::printf("\n");
+        return;
+    }
+
+    bool first = true;
+    for (uint8_t bit = 0; bit < 8u; ++bit) {
+        if ((state.inputs[0] & (1u << bit)) != 0u) {
+            std::printf("%s%s", first ? "" : ",", kNesNames[bit]);
+            first = false;
+        }
+    }
+    if (first) {
+        std::printf("none");
+    }
+    std::printf("\n");
+}
+
 }  // namespace
 
 int main()
@@ -93,7 +128,8 @@ int main()
     std::printf("NES/SNES output module ready\n");
 
     while (true) {
-        spi_write_read_blocking(kCoreSpi, response, received, CHIRBOT_LINK_FRAME_SIZE);
+        chirbot_spi_subnode_transfer(kCoreSpi, kCoreChipSelectPin, response,
+                                     received, CHIRBOT_LINK_FRAME_SIZE);
 
         chirbot_link_frame_view_t frame;
         if (chirbot_link_decode(received, &frame) != CHIRBOT_LINK_OK ||
@@ -114,6 +150,8 @@ int main()
                                               : ControllerProfile::Snes;
         const uint32_t pressed_state = state.inputs[0] |
                                        ((uint32_t)state.inputs[1] << 8u);
+
+        print_button_state(frame.sequence, state);
 
         wire_state = ~pressed_state;
         if (profile != active_profile) {

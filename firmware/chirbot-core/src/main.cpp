@@ -7,6 +7,8 @@
 #include "hardware/gpio.h"
 #include "hardware/spi.h"
 #include "pico/stdlib.h"
+#include "splash_screen.hpp"
+#include "st7735_display.hpp"
 #include "tasd.h"
 
 namespace {
@@ -63,7 +65,43 @@ void print_nes_buttons(uint8_t state)
     }
 }
 
-void print_tasd_event(uint32_t sequence, const tasd_packet_t &packet)
+const char *nes_button_label(uint8_t state)
+{
+    static const char *const labels[] = {
+        "A", "B", "SELECT", "START", "UP", "DOWN", "LEFT", "RIGHT"
+    };
+
+    for (uint8_t bit = 0; bit < 8u; ++bit) {
+        if ((state & (1u << bit)) != 0u) {
+            return labels[bit];
+        }
+    }
+    return "----";
+}
+
+// Demo rendering: shows the first pressed button, centered, one at a time.
+void show_buttons(chirbot::display::St7735Display &display, uint8_t state)
+{
+    using chirbot::display::St7735Display;
+
+    const char *label = nes_button_label(state);
+    int16_t length = 0;
+    while (label[length] != '\0') {
+        ++length;
+    }
+
+    constexpr uint8_t kScale = 2;
+    constexpr int16_t kGlyphWidth = 6 * kScale;
+    const int16_t text_width = static_cast<int16_t>(length * kGlyphWidth - kScale);
+    const int16_t x = static_cast<int16_t>((St7735Display::kWidth - text_width) / 2);
+    const int16_t y = static_cast<int16_t>((St7735Display::kHeight - 7 * kScale) / 2);
+
+    display.fill_screen(chirbot::display::rgb565(0, 0, 0));
+    display.draw_text(x, y, label, chirbot::display::rgb565(255, 255, 255), kScale);
+}
+
+void print_tasd_event(uint32_t sequence, const tasd_packet_t &packet,
+                      chirbot::display::St7735Display &display)
 {
     std::printf("[TASD seq=%" PRIu32 "] key=0x%04x len=%" PRIu32,
                 sequence, packet.key, packet.payload_len);
@@ -77,6 +115,7 @@ void print_tasd_event(uint32_t sequence, const tasd_packet_t &packet)
             if (event.inputs_len == 1u) {
                 std::printf(" buttons=");
                 print_nes_buttons(event.inputs[0]);
+                show_buttons(display, event.inputs[0]);
             }
         } else {
             std::printf(" invalid_input_moment");
@@ -96,7 +135,8 @@ void print_tasd_event(uint32_t sequence, const tasd_packet_t &packet)
     std::printf("\r\n");
 }
 
-bool inspect_tasd_document(uint32_t sequence, const uint8_t *payload, uint16_t length)
+bool inspect_tasd_document(uint32_t sequence, const uint8_t *payload, uint16_t length,
+                           chirbot::display::St7735Display &display)
 {
     tasd_header_t header;
     const tasd_result_t header_result = tasd_read_header(payload, length, &header);
@@ -118,7 +158,7 @@ bool inspect_tasd_document(uint32_t sequence, const uint8_t *payload, uint16_t l
     tasd_packet_t packet;
     tasd_result_t result;
     while ((result = tasd_reader_next(&reader, &packet)) == TASD_OK) {
-        print_tasd_event(sequence, packet);
+        print_tasd_event(sequence, packet, display);
     }
     if (result != TASD_ERR_END) {
         std::printf("[TASD seq=%" PRIu32 "] parse error: %d\r\n", sequence, result);
@@ -132,6 +172,19 @@ bool inspect_tasd_document(uint32_t sequence, const uint8_t *payload, uint16_t l
 int main()
 {
     stdio_init_all();
+
+    chirbot::display::St7735Display display({
+        .clock = kDisplayClockPin,
+        .mosi = kDisplayMosiPin,
+        .chip_select = kDisplayChipSelectPin,
+        .data_command = kDisplayDataCommandPin,
+        .reset = kDisplayResetPin,
+        .backlight = kDisplayBacklightPin,
+    });
+    display.init();
+    chirbot::display::show_rainbow_splash(display, "CHIRbot", 2000);
+    display.fill_screen(chirbot::display::rgb565(0, 0, 0));
+
     init_spi_main(kInputSpi, kInputMisoPin, kInputChipSelectPin,
                   kInputClockPin, kInputMosiPin);
     init_spi_main(kOutputSpi, kOutputMisoPin, kOutputChipSelectPin,
@@ -161,7 +214,7 @@ int main()
             if (frame.type == CHIRBOT_LINK_FRAME_TASD &&
                 (!have_sequence || frame.sequence != last_sequence)) {
                 if (inspect_tasd_document(frame.sequence, frame.payload,
-                                          frame.payload_length)) {
+                                          frame.payload_length, display)) {
                     forward_frame(received);
                 }
                 last_sequence = frame.sequence;
