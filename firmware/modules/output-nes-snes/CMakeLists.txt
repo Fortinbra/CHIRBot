@@ -22,6 +22,6 @@ target_link_libraries(${OUTPUT_NES_SNES_TARGET} PRIVATE
     tasd
 )
 
-pico_enable_stdio_usb(${OUTPUT_NES_SNES_TARGET} 0)
-pico_enable_stdio_uart(${OUTPUT_NES_SNES_TARGET} 1)
+pico_enable_stdio_usb(${OUTPUT_NES_SNES_TARGET} 1)
+pico_enable_stdio_uart(${OUTPUT_NES_SNES_TARGET} 0)
 pico_add_extra_outputs(${OUTPUT_NES_SNES_TARGET})

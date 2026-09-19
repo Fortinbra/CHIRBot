@@ -1,15 +1,20 @@
 #include "nes_input_module.hpp"
+#include "chirbot/link_spi.h"
 #include "chirbot/spi_subnode.h"
 #include <hardware/spi.h>
 #include <pico/stdlib.h>
 
 namespace {
 
+// The pinmux fixes these roles: GP16 is SPI0 RX and GP19 is SPI0 TX. A subnode
+// receives MOSI on RX and drives MISO from TX, so the harness must cross
+// (core GP19 -> module GP16, module GP19 -> core GP16). GP19 cannot receive
+// and GP16 cannot drive, regardless of what the wiring is labelled.
 spi_inst_t *const kCoreSpi = spi0;
-constexpr uint kCoreMisoPin = 16;
+constexpr uint kCoreMosiPin = 16;
 constexpr uint kCoreChipSelectPin = 17;
 constexpr uint kCoreClockPin = 18;
-constexpr uint kCoreMosiPin = 19;
+constexpr uint kCoreMisoPin = 19;
 
 }  // namespace
 
@@ -17,8 +22,9 @@ constexpr uint kCoreMosiPin = 19;
 // Core drives clock, module responds with TASD packets
 
 void NESInputModule::setup_spi() {
-    spi_init(kCoreSpi, 2'000'000);
-    spi_set_format(kCoreSpi, 8, SPI_CPOL_0, SPI_CPHA_0, SPI_MSB_FIRST);
+    spi_init(kCoreSpi, CHIRBOT_LINK_SPI_BAUD);
+    spi_set_format(kCoreSpi, CHIRBOT_LINK_SPI_DATA_BITS, CHIRBOT_LINK_SPI_CPOL,
+                   CHIRBOT_LINK_SPI_CPHA, CHIRBOT_LINK_SPI_ORDER);
     spi_set_slave(kCoreSpi, true);
 
     gpio_set_function(kCoreMisoPin, GPIO_FUNC_SPI);
@@ -28,6 +34,9 @@ void NESInputModule::setup_spi() {
 }
 
 void NESInputModule::handle_spi_request() {
-    chirbot_spi_subnode_transfer(kCoreSpi, kCoreChipSelectPin, tx_frame_,
-                                 rx_frame_, CHIRBOT_LINK_FRAME_SIZE);
+    if (!chirbot_spi_subnode_transfer(kCoreSpi, kCoreChipSelectPin, tx_frame_,
+                                      rx_frame_, CHIRBOT_LINK_FRAME_SIZE)) {
+        ++spi_timeouts_;
+    }
+    ++spi_transfers_;
 }

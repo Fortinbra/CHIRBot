@@ -275,11 +275,19 @@ input data-ready/IRQ signal from
 | Color | Signal | Input harness (core GPIO — module GPIO) | Output harness (core GPIO — module GPIO) |
 | --- | --- | --- | --- |
 | Yellow | SCLK | GP18 — GP18 | GP14 — GP18 |
-| Green | MOSI | GP19 — GP19 | GP15 — GP16 |
-| White | MISO | GP16 — GP16 | GP12 — GP19 |
+| Green | MOSI | GP19 — GP16 | GP15 — GP16 |
+| White | MISO | GP16 — GP19 | GP12 — GP19 |
 | Purple | CSn | GP17 — GP17 | GP13 — GP17 |
 | Black | GND | GND — GND | GND — GND |
 | Red | *(reserved, not yet wired)* | — | — |
+
+> **Data lines always cross.** On both RP2350 ends `GP16`/`GP12` are SPI `RX`
+> (input) and `GP19`/`GP15` are SPI `TX` (output); the pinmux fixes this and it
+> cannot be reassigned in firmware. A main node's `TX` must therefore land on
+> the subnode's `RX` and vice versa. Wiring the input harness straight through
+> (`GP19 — GP19`, `GP16 — GP16`) shorts two outputs together and leaves both
+> `RX` pins undriven, so the core reads all-zero frames and rejects every one
+> with a magic error.
 
 ### Core display bus (ST7735, 80x160, 3.3 V, SPI)
 

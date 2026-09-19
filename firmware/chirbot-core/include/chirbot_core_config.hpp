@@ -1,8 +1,9 @@
 #pragma once
 
+#include "chirbot/link_spi.h"
 #include "hardware/spi.h"
 
-constexpr uint32_t kModuleSpiBaud = 2'000'000;
+constexpr uint32_t kModuleSpiBaud = CHIRBOT_LINK_SPI_BAUD;
 constexpr uint32_t kInputPollIntervalUs = 1'000;
 
 inline spi_inst_t *const kInputSpi = spi0;

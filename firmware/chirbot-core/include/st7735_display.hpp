@@ -41,6 +41,8 @@ private:
     void write_data(uint8_t data);
     void write_data_buffer(const uint8_t *data, size_t length);
     void set_address_window(int16_t x0, int16_t y0, int16_t x1, int16_t y1);
+    void set_address_window_raw(int16_t x0, int16_t y0, int16_t x1, int16_t y1);
+    void clear_gram();
     void spi_write_byte(uint8_t byte);
 
     St7735Pins pins_;

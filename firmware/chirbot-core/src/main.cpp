@@ -4,6 +4,7 @@
 #include <cstdio>
 
 #include "chirbot/link_protocol.h"
+#include "chirbot/link_spi.h"
 #include "hardware/gpio.h"
 #include "hardware/spi.h"
 #include "pico/stdlib.h"
@@ -16,7 +17,8 @@ namespace {
 void init_spi_main(spi_inst_t *spi, uint miso, uint chip_select, uint clock, uint mosi)
 {
     spi_init(spi, kModuleSpiBaud);
-    spi_set_format(spi, 8, SPI_CPOL_0, SPI_CPHA_0, SPI_MSB_FIRST);
+    spi_set_format(spi, CHIRBOT_LINK_SPI_DATA_BITS, CHIRBOT_LINK_SPI_CPOL,
+                   CHIRBOT_LINK_SPI_CPHA, CHIRBOT_LINK_SPI_ORDER);
 
     gpio_set_function(miso, GPIO_FUNC_SPI);
     gpio_set_function(clock, GPIO_FUNC_SPI);
@@ -172,6 +174,8 @@ bool inspect_tasd_document(uint32_t sequence, const uint8_t *payload, uint16_t l
 int main()
 {
     stdio_init_all();
+    // Give USB CDC time to enumerate so startup logging is not lost.
+    sleep_ms(2000);
 
     chirbot::display::St7735Display display({
         .clock = kDisplayClockPin,
@@ -197,15 +201,21 @@ int main()
     bool have_sequence = false;
     uint32_t last_sequence = 0;
     chirbot_link_result_t last_error = CHIRBOT_LINK_OK;
+    uint32_t polls = 0;
+    uint32_t good_frames = 0;
+    uint32_t tasd_frames = 0;
+    absolute_time_t next_report = make_timeout_time_ms(2000);
 
-    std::printf("CHIRBot core ready: SPI %u Hz, UART stdio\r\n", kModuleSpiBaud);
+    std::printf("CHIRBot core ready: SPI %u Hz, USB stdio\r\n", kModuleSpiBaud);
 
     while (true) {
         transfer_frame(kInputSpi, kInputChipSelectPin, request, received);
+        ++polls;
 
         chirbot_link_frame_view_t frame;
         const chirbot_link_result_t result = chirbot_link_decode(received, &frame);
         if (result == CHIRBOT_LINK_OK) {
+            ++good_frames;
             if (last_error != CHIRBOT_LINK_OK) {
                 std::printf("Input link recovered\r\n");
             }
@@ -213,6 +223,7 @@ int main()
 
             if (frame.type == CHIRBOT_LINK_FRAME_TASD &&
                 (!have_sequence || frame.sequence != last_sequence)) {
+                ++tasd_frames;
                 if (inspect_tasd_document(frame.sequence, frame.payload,
                                           frame.payload_length, display)) {
                     forward_frame(received);
@@ -223,6 +234,15 @@ int main()
         } else if (result != last_error) {
             std::printf("Input link error: %d\r\n", result);
             last_error = result;
+        }
+
+        if (absolute_time_diff_us(get_absolute_time(), next_report) <= 0) {
+            std::printf("[core] polls=%" PRIu32 " ok=%" PRIu32 " tasd=%" PRIu32
+                        " last_err=%d rx=%02x%02x%02x%02x%02x%02x\r\n",
+                        polls, good_frames, tasd_frames, last_error,
+                        received[0], received[1], received[2],
+                        received[3], received[4], received[5]);
+            next_report = make_timeout_time_ms(2000);
         }
 
         sleep_us(kInputPollIntervalUs);

@@ -1,6 +1,7 @@
 #ifndef CHIRBOT_SPI_SUBNODE_H
 #define CHIRBOT_SPI_SUBNODE_H
 
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -20,11 +21,14 @@ extern "C" {
  * and flushing both FIFOs. That bounds any desync to the frame it occurred in.
  */
 
-/* Waits for CS idle, then discards queued receive and transmit bytes. */
-void chirbot_spi_subnode_resync(spi_inst_t *spi, uint cs_pin);
+/* Waits for CS idle, then discards queued receive and transmit bytes.
+ * Returns false if the idle gap was not observed before the timeout, in which
+ * case the FIFOs are still flushed and alignment is best-effort. */
+bool chirbot_spi_subnode_resync(spi_inst_t *spi, uint cs_pin);
 
-/* Realigns, then exchanges exactly `length` bytes with the main node. */
-void chirbot_spi_subnode_transfer(
+/* Realigns, then exchanges exactly `length` bytes with the main node.
+ * Returns the result of the realignment. */
+bool chirbot_spi_subnode_transfer(
     spi_inst_t *spi,
     uint cs_pin,
     const uint8_t *tx,

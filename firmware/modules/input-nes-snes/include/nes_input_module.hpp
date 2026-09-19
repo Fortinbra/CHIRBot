@@ -30,4 +30,6 @@ private:
     uint8_t demo_index_;
     bool demo_held_;
     uint64_t demo_next_step_us_;
+    uint32_t spi_transfers_;
+    uint32_t spi_timeouts_;
 };

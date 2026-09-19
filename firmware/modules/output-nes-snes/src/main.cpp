@@ -5,6 +5,7 @@
 
 #include "chirbot/controller_tasd.h"
 #include "chirbot/link_protocol.h"
+#include "chirbot/link_spi.h"
 #include "chirbot/spi_subnode.h"
 #include "controller_output.pio.h"
 #include "hardware/gpio.h"
@@ -29,8 +30,9 @@ uint32_t wire_state = 0xFFFFFFFFu;
 
 void init_core_spi()
 {
-    spi_init(kCoreSpi, 2'000'000);
-    spi_set_format(kCoreSpi, 8, SPI_CPOL_0, SPI_CPHA_0, SPI_MSB_FIRST);
+    spi_init(kCoreSpi, CHIRBOT_LINK_SPI_BAUD);
+    spi_set_format(kCoreSpi, CHIRBOT_LINK_SPI_DATA_BITS, CHIRBOT_LINK_SPI_CPOL,
+                   CHIRBOT_LINK_SPI_CPHA, CHIRBOT_LINK_SPI_ORDER);
     spi_set_slave(kCoreSpi, true);
 
     gpio_set_function(kCoreMosiPin, GPIO_FUNC_SPI);
@@ -108,6 +110,8 @@ void print_button_state(uint32_t sequence, const chirbot_controller_state_t &sta
 int main()
 {
     stdio_init_all();
+    // Give USB CDC time to enumerate so startup logging is not lost.
+    sleep_ms(2000);
     init_core_spi();
 
     gpio_init(kConsoleLatchPin);
@@ -124,16 +128,33 @@ int main()
     uint8_t response[CHIRBOT_LINK_FRAME_SIZE] = {};
     uint32_t last_sequence = 0;
     bool have_sequence = false;
+    uint32_t transfers = 0;
+    uint32_t cs_timeouts = 0;
+    uint32_t decode_errors = 0;
+    absolute_time_t next_report = make_timeout_time_ms(2000);
 
     std::printf("NES/SNES output module ready\n");
 
     while (true) {
-        chirbot_spi_subnode_transfer(kCoreSpi, kCoreChipSelectPin, response,
-                                     received, CHIRBOT_LINK_FRAME_SIZE);
+        if (!chirbot_spi_subnode_transfer(kCoreSpi, kCoreChipSelectPin, response,
+                                          received, CHIRBOT_LINK_FRAME_SIZE)) {
+            ++cs_timeouts;
+        }
+        ++transfers;
+
+        if (absolute_time_diff_us(get_absolute_time(), next_report) <= 0) {
+            std::printf("[out] transfers=%" PRIu32 " cs_timeouts=%" PRIu32
+                        " decode_errors=%" PRIu32 "\n",
+                        transfers, cs_timeouts, decode_errors);
+            next_report = make_timeout_time_ms(2000);
+        }
 
         chirbot_link_frame_view_t frame;
-        if (chirbot_link_decode(received, &frame) != CHIRBOT_LINK_OK ||
-            frame.type != CHIRBOT_LINK_FRAME_TASD ||
+        if (chirbot_link_decode(received, &frame) != CHIRBOT_LINK_OK) {
+            ++decode_errors;
+            continue;
+        }
+        if (frame.type != CHIRBOT_LINK_FRAME_TASD ||
             (have_sequence && frame.sequence == last_sequence)) {
             continue;
         }

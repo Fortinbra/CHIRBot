@@ -13,8 +13,13 @@ namespace {
 // needs the native row offset, while RASET (our height/row axis) maps to
 // native columns and needs the native column offset. Adjust if a different
 // panel/tab is wired up.
-constexpr int16_t kColumnOffset = 0;
+constexpr int16_t kColumnOffset = 1;
 constexpr int16_t kRowOffset = 26;
+
+// Full GRAM extent on the same swapped axes, used to blank the off-screen
+// margins so power-on noise outside the visible window is never displayed.
+constexpr int16_t kGramWidth = 162;
+constexpr int16_t kGramHeight = 132;
 
 // 5x7 glyphs. Each byte is one row, bits 4..0 are columns left to right
 // (bit4 = leftmost column).
@@ -166,21 +171,45 @@ void St7735Display::init()
     sleep_ms(100);
 
     gpio_put(pins_.chip_select, 1);
+
+    clear_gram();
 }
 
 void St7735Display::set_address_window(int16_t x0, int16_t y0, int16_t x1, int16_t y1)
 {
+    set_address_window_raw(static_cast<int16_t>(x0 + kColumnOffset),
+                           static_cast<int16_t>(y0 + kRowOffset),
+                           static_cast<int16_t>(x1 + kColumnOffset),
+                           static_cast<int16_t>(y1 + kRowOffset));
+}
+
+void St7735Display::set_address_window_raw(int16_t x0, int16_t y0, int16_t x1, int16_t y1)
+{
     write_command(0x2A);  // CASET
     write_data_buffer((const uint8_t[]){
-        0x00, static_cast<uint8_t>(x0 + kColumnOffset),
-        0x00, static_cast<uint8_t>(x1 + kColumnOffset)}, 4);
+        0x00, static_cast<uint8_t>(x0),
+        0x00, static_cast<uint8_t>(x1)}, 4);
 
     write_command(0x2B);  // RASET
     write_data_buffer((const uint8_t[]){
-        0x00, static_cast<uint8_t>(y0 + kRowOffset),
-        0x00, static_cast<uint8_t>(y1 + kRowOffset)}, 4);
+        0x00, static_cast<uint8_t>(y0),
+        0x00, static_cast<uint8_t>(y1)}, 4);
 
     write_command(0x2C);  // RAMWR
+}
+
+void St7735Display::clear_gram()
+{
+    gpio_put(pins_.chip_select, 0);
+    set_address_window_raw(0, 0, kGramWidth - 1, kGramHeight - 1);
+
+    gpio_put(pins_.data_command, 1);
+    for (int32_t index = 0; index < kGramWidth * kGramHeight; ++index) {
+        spi_write_byte(0x00);
+        spi_write_byte(0x00);
+    }
+
+    gpio_put(pins_.chip_select, 1);
 }
 
 void St7735Display::fill_rect(int16_t x, int16_t y, int16_t width, int16_t height, uint16_t color565)

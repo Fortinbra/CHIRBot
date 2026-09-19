@@ -15,6 +15,6 @@ target_link_libraries(chirbot_core PRIVATE
 	tasd
 )
 
-pico_enable_stdio_uart(chirbot_core 1)
-pico_enable_stdio_usb(chirbot_core 0)
+pico_enable_stdio_uart(chirbot_core 0)
+pico_enable_stdio_usb(chirbot_core 1)
 pico_add_extra_outputs(chirbot_core)

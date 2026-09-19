@@ -36,7 +36,9 @@ NESInputModule::NESInputModule()
             frame_ready_(false),
             demo_index_(0),
             demo_held_(false),
-            demo_next_step_us_(0) {
+            demo_next_step_us_(0),
+            spi_transfers_(0),
+            spi_timeouts_(0) {
 }
 
 void NESInputModule::init() {
@@ -54,6 +56,9 @@ void NESInputModule::run() {
         if (encode_tasd_packet(buttons)) {
             last_controller_data_ = buttons;
             frame_ready_ = true;
+            printf("[in] seq=%lu buttons=0x%02x transfers=%lu cs_timeouts=%lu\n",
+                   (unsigned long)sequence_, buttons,
+                   (unsigned long)spi_transfers_, (unsigned long)spi_timeouts_);
             if (demo_held_) {
                 demo_index_ = (uint8_t)((demo_index_ + 1u) % kDemoStepCount);
                 demo_held_ = false;
