@@ -3,6 +3,16 @@
 *Fox (Lead), Architecture Owner*  
 *Analysis of current firmware state and roadmap for modular input relay*
 
+## Working phase assumption
+
+This analysis describes a proof-of-concept system, not a production timing
+implementation. The first success criterion is a complete, observable path
+across the actual input, core, and output hardware, including reset and link
+recovery. Hardware surprises, wiring errors, electrical limitations, and
+integration failures are valuable results and should be recorded. Timing and
+throughput should be measured where useful, while optimization and hard
+latency enforcement remain follow-up work after the path operates end to end.
+
 ---
 
 ## Current Firmware Analysis
@@ -25,7 +35,7 @@ The current `main.cpp` is a **multi-peripheral demo sketch** showcasing Raspberr
 | Demo Code | Status | Rationale |
 |-----------|--------|-----------|
 | SPI Master setup | **KEEP** | Core input communication (TASD protocol from host) |
-| SPI DMA config | **KEEP** | Needed for 1ms latency relay throughput |
+| SPI DMA config | **KEEP** | Useful for integration and a later latency optimization pass |
 | I2C init | **REMOVE** | No multi-peripheral plan; core is single input/output |
 | DMA copy example | **REFACTOR** | Replace with SPI RX DMA chain (not buffer-copy demo) |
 | PIO blink | **OPTIONAL** | Keep for status LED, move to optional output module |
@@ -40,13 +50,15 @@ The current `main.cpp` is a **multi-peripheral demo sketch** showcasing Raspberr
 
 ### SPI Communication (Input Path)
 - **Clock:** SPI 1 MHz (configured in demo)
-- **Latency requirement:** <1 ms core relay (output device drives poll edge at ~125 Hz = 8ms periods)
+- **PoC check:** Capture observed relay behavior while proving the path; the
+  <1 ms figure is a later optimization target, not a bring-up gate.
 - **DMA throughput:** At 1 MHz, a 12-byte TASD packet (timestamp + buttons + analog_x/y) takes ~96 µs
 - **Strategy:** Use SPI DMA to offload bytes; interrupt on frame complete to parse & relay
 
 ### Output Path (USB HID or next module)
 - **Clock:** Host polls USB HID at ~125 Hz (typical gaming device)
-- **Latency requirement:** <1 ms relay guarantee
+- **PoC check:** Confirm correct packets reach the output path; measure latency
+  for characterization without requiring the final guarantee yet.
 - **Strategy:** Parsed input packet buffered in core; output module polls/blocks on ring buffer
 
 ### MicroSD Storage (Asynchronous)
@@ -114,7 +126,8 @@ Slices build on each other and avoid blocking cross-dependencies.
 - [ ] Core logs timestamp, buttons, analog_x, analog_y correctly
 - [ ] Loopback test: send mock frame via GPIO/bench tool, verify parsed struct
 - [ ] Handles frame boundaries correctly (no off-by-one errors)
-- [ ] Timing: <100 µs from SPI frame complete to interrupt return
+- [ ] Capture frame-complete-to-handler timing as a baseline; the <100 µs
+  figure is a later optimization target, not a PoC blocker
 
 ---
 
@@ -145,7 +158,9 @@ Slices build on each other and avoid blocking cross-dependencies.
 - [ ] HID module registers a callback with core at startup
 - [ ] Core calls callback synchronously upon each packet parse
 - [ ] Callback receives correct packet data (no corruption)
-- [ ] Relay latency measured <1 ms (logic analyzer or instrumentation)
+- [ ] Relay latency captured as baseline data (logic analyzer or
+  instrumentation); defer enforcing <1 ms until the integration path is
+  stable
 - [ ] HID module can be swapped for a mock for testing
 
 ---

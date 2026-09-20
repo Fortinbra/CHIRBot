@@ -8,10 +8,13 @@ realtime visualization.
 - Architecture & repository structure: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 - Project roadmap: [docs/ROADMAP.md](docs/ROADMAP.md)
 
-> **Status:** Early design and prototyping. The architecture is still evolving;
-> accepted decisions are recorded in [docs/design/](docs/design/). The website
-> describes the original concept, while this repository is the source of truth
-> for current technical decisions.
+> **Status:** Proof of concept and hardware bring-up. The immediate priority is
+> proving that the complete path works together and finding electrical,
+> firmware, and integration gotchas. The architecture is still evolving;
+> accepted decisions are recorded in [docs/design/](docs/design/). Latency
+> optimization and enforced production targets follow the integration evidence.
+> The website describes the original concept, while this repository is the
+> source of truth for current technical decisions.
 
 This is the parent repo for the CHIRBot project. Components live here as
 folders and are promoted to standalone repos (linked as submodules) as they

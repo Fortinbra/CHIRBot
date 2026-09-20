@@ -1,13 +1,15 @@
 # chirbot-core
 
 > **Status:** First SPI-to-UART relay prototype implemented. Hardware design is
-> not finalized.
+> not finalized; current work prioritizes end-to-end bring-up and finding
+> hardware/integration gotchas over final latency optimization.
 
 Firmware for the CHIRBot core board (RP2350B). Responsibilities:
 
 - **SPI matrix switch (main)** — routes TASD-packetized input between sources
   (input module, PC stream, microSD playback) and sinks (output module,
-  visualization, microSD recording) with a ~1 ms relay target
+  visualization, microSD recording); ~1 ms is an eventual target, not the
+  current PoC gate
 - **USB to PC** — device power, matrix configuration, virtual input streaming,
   microSD exposure as mass storage
 - **microSD storage** — TASD macro/run recording and playback

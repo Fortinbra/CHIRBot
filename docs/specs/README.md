@@ -10,6 +10,7 @@ software. Planned documents:
 | [TASD usage](tasd-usage.md) | How CHIRBot uses or extends the [TASD format](https://tasd.io/) | prototype |
 | [Clock domains](clock-domains.md) | Poll-edge timing model and buffering behavior | outline |
 | [NES-to-UART scenario](nes-to-uart-scenario.md) | First end-to-end wiring and acceptance test | prototype |
+| [SD card storage](sd-storage.md) | microSD hardware, filesystem, and TASD recording/playback on the core | draft |
 
 An **outline** names the contract and unresolved decisions but is not stable
 enough to implement against. Each document must move through draft review

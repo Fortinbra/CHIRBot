@@ -4,6 +4,16 @@ This directory is the source of truth for CHIRBot's current technical design.
 The public website introduces the project and preserves useful early design
 discussion, but it may lag decisions recorded here.
 
+## Current project phase
+
+CHIRBot is in proof-of-concept and hardware bring-up. Near-term work should
+prioritize one complete path working across real hardware, observable startup
+and recovery behavior, and discovery of electrical or integration gotchas.
+Measure latency, jitter, throughput, and signal quality when practical, but do
+not make production optimization or final latency enforcement a prerequisite
+for proving a feature integrates end to end. Record findings and revisit the
+targets after the path is working.
+
 ## Start here
 
 | Document | Purpose |

@@ -4,8 +4,10 @@
 > assumptions; accepted technical choices belong in [design decisions](design/).
 
 The immediate goal is not to implement every planned component. It is to prove
-one complete input-to-output path and stabilize the contracts that let later
-modules interoperate.
+one complete input-to-output path, exercise it on real hardware, and capture
+the gotchas that shape the contracts for later modules. Performance targets are
+measurements and follow-up work during this phase, not gates that block basic
+integration.
 
 ## 0. Align the project baseline
 
@@ -28,9 +30,9 @@ modules interoperate.
       needs from file-storage semantics
 - [ ] Define the [clock-domain model](specs/README.md), including output poll
       edges, buffering, timestamps, and recording behavior
-- [ ] Turn the approximately 1 ms objective into a measurable latency budget
-      allocated across input sampling, four-slot bank service, routing, and
-      output response
+- [ ] Record the approximately 1 ms objective and the measurements needed to
+      turn it into a later latency budget; do not make the final budget a PoC
+      entry gate
 
 ## 2. Prove one vertical slice
 
@@ -39,7 +41,12 @@ modules interoperate.
 - [ ] Build the [three-MCU architecture prototype](../hardware/PROTOTYPE.md)
       using an RP2350B core and two modules on development hardware
 - [ ] Demonstrate live relay, recording, and playback through the same path
-- [ ] Measure latency, jitter, electrical margins, and replay behavior
+- [ ] Verify the complete path, startup/reset behavior, link recovery, and
+      replay behavior on real hardware
+- [ ] Capture electrical margins, wiring mistakes, signal-integrity issues,
+      and other hardware gotchas as prototype findings
+- [ ] Measure latency and jitter as characterization data; optimize and enforce
+      targets after the integration path is stable
 - [ ] Feed prototype findings back into specs and superseding ADRs
 
 NES/SNES is a strong candidate for this milestone because its signaling and
@@ -65,8 +72,8 @@ implementation begins.
 
 ## Definition of baseline readiness
 
-The project has a credible baseline when the four shared specifications are
-reviewable, one end-to-end hardware path meets its measured timing budget, its
-build and tests run in CI, and a new module author can implement against the
-published electrical, mechanical, and protocol contracts without copying an
-existing module blindly.
+The project has a credible PoC baseline when one end-to-end hardware path is
+repeatable, its startup and recovery behavior are understood, important
+electrical and integration gotchas are recorded, and the build and focused
+tests run. Meeting the final timing budget, production contracts, and module
+authoring experience are productization milestones built on that baseline.

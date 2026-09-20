@@ -28,6 +28,16 @@ Design goals (from [chirbot.com](https://chirbot.com/)):
 - On-device microSD storage for recordings, exposed to the PC via USB
 - Cost targets: < $100 for the core, < $40 per module
 
+### Current proof-of-concept posture
+
+The current phase is integration-first hardware bring-up. The primary question
+is whether the input, core, output, storage, and recovery paths work together
+on real boards, and what electrical or firmware gotchas appear along the way.
+The approximately 1 ms relay objective remains an architectural direction and
+should be measured during bring-up, but it is not a hard PoC acceptance gate.
+Latency, jitter, throughput, and signal margins become optimization and
+enforcement work after the end-to-end path is stable.
+
 ### 1.1 Terminology
 
 Input events are described with these terms throughout the project. Use them
@@ -113,8 +123,9 @@ flowchart LR
   serves up to four output slots. Each slot has a dedicated chip select, and
   the core initiates every discovery, configuration, input-read, and
   output-write transaction. A module never initiates an SPI transaction.
-  Target end-to-end relay latency is ~1 ms regardless of the native protocols
-  involved.
+  The eventual target end-to-end relay latency is ~1 ms regardless of the
+  native protocols involved. Prototype bring-up measures this behavior but
+  prioritizes proving the link and recording any integration gotchas first.
 3. **Passive module carrier and board-to-board slots - no link cables**
   *(decided - see
   [design/0003](design/0003-carrier-and-multislot-bus-topology.md); connector

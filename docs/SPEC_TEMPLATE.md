@@ -87,12 +87,19 @@ typedef enum {
 
 ## Validation & Acceptance Criteria
 
-Define *exactly* how to test this feature. Each criterion must be testable in isolation.
+Define *exactly* how to test this feature. Each criterion must be testable in
+isolation. During the proof-of-concept phase, prioritize end-to-end integration,
+observable startup/recovery behavior, and recording hardware or electrical
+gotchas. Treat performance numbers as measurements unless this feature is
+specifically a later optimization or enforcement task.
 
 Example:
 - [ ] Core can receive a TASD input packet via SPI (bytes in expected positions, no corruption)
 - [ ] Core correctly parses timestamp, buttons, and analog values from a packet
-- [ ] Core relays parsed packet to output device (USB HID or next module) within 1ms
+- [ ] Core relays the parsed packet to the output device (USB HID or next
+  module) and the path is observable end to end
+- [ ] Observed relay timing is captured as baseline data; enforce the final
+  latency target in a later optimization pass
 - [ ] Core handles malformed packets gracefully (logs, does not crash)
 - [ ] Recorded packets on microSD can be read back and bit-verified against originals
 
