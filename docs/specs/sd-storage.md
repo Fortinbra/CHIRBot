@@ -121,6 +121,34 @@ already-consumed hardware and must shape the design below:
   Adafruit has revised this board's silkscreen at least once (see product
   page revision history).
 
+### Prototype SPI pinout
+
+The prototype uses the next contiguous free GPIO block on the core RP2350B.
+These pins are reserved for the dedicated PIO-SPI state machine and must not
+be reassigned to either module link or the display:
+
+| Color | Breakout signal | RP2350B core pin | Direction from core |
+| --- | --- | --- | --- |
+| Red | `3V` | `3V3` | Power |
+| Black | `GND` | `GND` | Return |
+| Yellow | `CLK` | `GP27` | Core to card |
+| White | `DO` / SPI MISO | `GP28` | Card to core |
+| Green | `DI` / SPI MOSI | `GP29` | Core to card |
+| Purple | `CS` | `GP30` | Core to card, active low |
+| White (flagged with tape) | `DET` | `GP34` | Card to core |
+
+Leave `DAT2` and the other SDIO data lines unconnected in SPI mode. **Decision:
+use the breakout's `DET` pin for card presence instead of probing via
+initialization/I/O.** The board in bench use has a `DET` pin wired to the
+socket's mechanical card-detect switch; this was not expected from the PID
+4682 product page referenced above when this document was first written, so
+confirm the label and behavior against the specific board in hand before
+relying on it — some revisions/vendors omit it, and switch polarity is not
+standardized. Assumed behavior, to verify during bring-up with a multimeter
+continuity check: `DET` reads low (switch closed) when a card is fully
+seated, and high (open, pulled up by the core's internal pull-up) when no
+card is present or the card is only partially inserted.
+
 ### Bus and pin assignment (decision)
 
 Candidates considered, roughly in order of expected effort:
@@ -221,6 +249,14 @@ SPI block.
   (ARCHITECTURE.md §5).
 
 ### Function Signatures / Module Boundaries
+
+The current bring-up uses the FatFs R0.15 sources bundled with the installed
+Pico SDK. The SD disk-I/O callbacks use the dedicated GPIO SPI block driver;
+normal startup mounts the existing volume and lists its root directory. The
+destructive formatter is never called automatically: entering the exact
+console command `FORMAT SD` followed by Enter erases the card and creates a
+new FAT32 filesystem, then remounts it. USB CDC and UART0 both use the same
+console input path.
 
 Example shape only — exact API to be finalized during implementation:
 
@@ -409,10 +445,10 @@ document's scope:
   decisions that should be finalized together with
   [docs/specs/tasd-usage.md](tasd-usage.md).
 - Physical microSD socket part selection for production hardware (this
-  document only covers the Adafruit breakout used for prototyping) — a
-  hardware-team decision; a socket with a card-detect switch is recommended so
-  firmware can react to insertion/removal events instead of polling for card
-  presence.
+  document only covers the Adafruit breakout used for prototyping); the
+  prototype's `DET` pin (see "Prototype SPI pinout" above) covers card
+  presence for now, but production socket part selection is still a
+  hardware-team decision.
 
 ## Implementation Notes
 

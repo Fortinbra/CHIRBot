@@ -2,6 +2,7 @@
 
 #include <cinttypes>
 #include <cstdio>
+#include <cstring>
 
 #include "chirbot/link_protocol.h"
 #include "chirbot/link_spi.h"
@@ -10,6 +11,9 @@
 #include "pico/stdlib.h"
 #include "splash_screen.hpp"
 #include "st7735_display.hpp"
+#include "menu.hpp"
+#include "sd_probe.hpp"
+#include "sd_storage.hpp"
 #include "tasd.h"
 
 namespace {
@@ -42,99 +46,18 @@ void forward_frame(const uint8_t *frame)
     gpio_put(kOutputChipSelectPin, 1);
 }
 
-void print_bytes(const uint8_t *bytes, uint32_t length)
+// Updates the on-device display for an input-moment packet. No UART output;
+// per-packet printing was too noisy for continuous live relay traffic.
+void update_display_from_event(const tasd_packet_t &packet,
+                               chirbot::display::St7735Display &display)
 {
-    for (uint32_t index = 0; index < length; ++index) {
-        std::printf("%02x", bytes[index]);
+    if (packet.key != TASD_KEY_INPUT_MOMENT) {
+        return;
     }
-}
-
-void print_nes_buttons(uint8_t state)
-{
-    static const char *const names[] = {
-        "A", "B", "Select", "Start", "Up", "Down", "Left", "Right"
-    };
-
-    bool first = true;
-    for (uint8_t bit = 0; bit < 8u; ++bit) {
-        if ((state & (1u << bit)) != 0u) {
-            std::printf("%s%s", first ? "" : ",", names[bit]);
-            first = false;
-        }
+    tasd_pkt_input_moment_t event;
+    if (tasd_decode_input_moment(&packet, &event) == TASD_OK && event.inputs_len == 1u) {
+        chirbot::display::draw_nes_button_state(display, event.inputs[0]);
     }
-    if (first) {
-        std::printf("none");
-    }
-}
-
-const char *nes_button_label(uint8_t state)
-{
-    static const char *const labels[] = {
-        "A", "B", "SELECT", "START", "UP", "DOWN", "LEFT", "RIGHT"
-    };
-
-    for (uint8_t bit = 0; bit < 8u; ++bit) {
-        if ((state & (1u << bit)) != 0u) {
-            return labels[bit];
-        }
-    }
-    return "----";
-}
-
-// Demo rendering: shows the first pressed button, centered, one at a time.
-void show_buttons(chirbot::display::St7735Display &display, uint8_t state)
-{
-    using chirbot::display::St7735Display;
-
-    const char *label = nes_button_label(state);
-    int16_t length = 0;
-    while (label[length] != '\0') {
-        ++length;
-    }
-
-    constexpr uint8_t kScale = 2;
-    constexpr int16_t kGlyphWidth = 6 * kScale;
-    const int16_t text_width = static_cast<int16_t>(length * kGlyphWidth - kScale);
-    const int16_t x = static_cast<int16_t>((St7735Display::kWidth - text_width) / 2);
-    const int16_t y = static_cast<int16_t>((St7735Display::kHeight - 7 * kScale) / 2);
-
-    display.fill_screen(chirbot::display::rgb565(0, 0, 0));
-    display.draw_text(x, y, label, chirbot::display::rgb565(255, 255, 255), kScale);
-}
-
-void print_tasd_event(uint32_t sequence, const tasd_packet_t &packet,
-                      chirbot::display::St7735Display &display)
-{
-    std::printf("[TASD seq=%" PRIu32 "] key=0x%04x len=%" PRIu32,
-                sequence, packet.key, packet.payload_len);
-
-    if (packet.key == TASD_KEY_INPUT_MOMENT) {
-        tasd_pkt_input_moment_t event;
-        if (tasd_decode_input_moment(&packet, &event) == TASD_OK) {
-            std::printf(" port=%u hold=%u index_type=%u index=%" PRIu64 " data=",
-                        event.port, event.hold, event.index_type, event.index);
-            print_bytes(event.inputs, event.inputs_len);
-            if (event.inputs_len == 1u) {
-                std::printf(" buttons=");
-                print_nes_buttons(event.inputs[0]);
-                show_buttons(display, event.inputs[0]);
-            }
-        } else {
-            std::printf(" invalid_input_moment");
-        }
-    } else if (packet.key == TASD_KEY_PORT_CONTROLLER) {
-        tasd_pkt_port_controller_t controller;
-        if (tasd_decode_port_controller(&packet, &controller) == TASD_OK) {
-            std::printf(" port=%u controller=0x%04x", controller.port, controller.type);
-        } else {
-            std::printf(" invalid_port_controller");
-        }
-    } else {
-        std::printf(" payload=");
-        print_bytes(packet.payload, packet.payload_len);
-    }
-
-    std::printf("\r\n");
 }
 
 bool inspect_tasd_document(uint32_t sequence, const uint8_t *payload, uint16_t length,
@@ -160,7 +83,7 @@ bool inspect_tasd_document(uint32_t sequence, const uint8_t *payload, uint16_t l
     tasd_packet_t packet;
     tasd_result_t result;
     while ((result = tasd_reader_next(&reader, &packet)) == TASD_OK) {
-        print_tasd_event(sequence, packet, display);
+        update_display_from_event(packet, display);
     }
     if (result != TASD_ERR_END) {
         std::printf("[TASD seq=%" PRIu32 "] parse error: %d\r\n", sequence, result);
@@ -171,24 +94,8 @@ bool inspect_tasd_document(uint32_t sequence, const uint8_t *payload, uint16_t l
 
 }  // namespace
 
-int main()
+void run_controller_input(chirbot::display::St7735Display &display)
 {
-    stdio_init_all();
-    // Give USB CDC time to enumerate so startup logging is not lost.
-    sleep_ms(2000);
-
-    chirbot::display::St7735Display display({
-        .clock = kDisplayClockPin,
-        .mosi = kDisplayMosiPin,
-        .chip_select = kDisplayChipSelectPin,
-        .data_command = kDisplayDataCommandPin,
-        .reset = kDisplayResetPin,
-        .backlight = kDisplayBacklightPin,
-    });
-    display.init();
-    chirbot::display::show_rainbow_splash(display, "CHIRbot", 2000);
-    display.fill_screen(chirbot::display::rgb565(0, 0, 0));
-
     init_spi_main(kInputSpi, kInputMisoPin, kInputChipSelectPin,
                   kInputClockPin, kInputMosiPin);
     init_spi_main(kOutputSpi, kOutputMisoPin, kOutputChipSelectPin,
@@ -206,7 +113,7 @@ int main()
     uint32_t tasd_frames = 0;
     absolute_time_t next_report = make_timeout_time_ms(2000);
 
-    std::printf("CHIRBot core ready: SPI %u Hz, USB stdio\r\n", kModuleSpiBaud);
+    std::printf("CHIRBot core ready: SPI %u Hz, UART stdio\r\n", kModuleSpiBaud);
 
     while (true) {
         transfer_frame(kInputSpi, kInputChipSelectPin, request, received);
@@ -246,5 +153,37 @@ int main()
         }
 
         sleep_us(kInputPollIntervalUs);
+    }
+}
+
+int main()
+{
+    stdio_init_all();
+
+    chirbot::display::St7735Display display({
+        .clock = kDisplayClockPin,
+        .mosi = kDisplayMosiPin,
+        .chip_select = kDisplayChipSelectPin,
+        .data_command = kDisplayDataCommandPin,
+        .reset = kDisplayResetPin,
+        .backlight = kDisplayBacklightPin,
+    });
+    display.init();
+    chirbot::display::show_rainbow_splash(display, "CHIRbot", 2000);
+    display.fill_screen(chirbot::display::rgb565(0, 0, 0));
+
+    chirbot::menu::init_buttons();
+    const chirbot::menu::Mode mode = chirbot::menu::run_startup_menu(display);
+
+    switch (mode) {
+    case chirbot::menu::Mode::FilePlayback:
+        chirbot::menu::run_file_playback(display);
+        break;
+    case chirbot::menu::Mode::SdTools:
+        chirbot::menu::run_sd_tools(display);
+        break;
+    default:
+        run_controller_input(display);
+        break;
     }
 }

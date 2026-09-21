@@ -26,3 +26,17 @@ constexpr uint kDisplayChipSelectPin = 22;
 constexpr uint kDisplayResetPin = 24;
 constexpr uint kDisplayBacklightPin = 25;
 constexpr uint kDisplayDataCommandPin = 26;
+
+// Core microSD breakout (dedicated PIO-SPI bus; SPI0/SPI1 are module links).
+constexpr uint kSdClockPin = 27;
+constexpr uint kSdMisoPin = 28;
+constexpr uint kSdMosiPin = 29;
+constexpr uint kSdChipSelectPin = 30;
+
+// Startup menu buttons (momentary, active-low, internal pull-ups).
+constexpr uint kMenuUpPin = 31;
+constexpr uint kMenuDownPin = 32;
+constexpr uint kMenuSelectPin = 33;
+
+// SD breakout DET (card-detect switch); see docs/specs/sd-storage.md.
+constexpr uint kSdDetectPin = 34;

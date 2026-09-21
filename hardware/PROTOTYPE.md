@@ -313,6 +313,31 @@ against the
 [Pimoroni pinout diagram](https://cdn.shopify.com/s/files/1/0174/1800/files/pga2350_pinout_diagram.pdf?v=1723124465)
 before wiring.
 
+### Core microSD breakout (Adafruit 4682, 3.3 V SPI)
+
+The SD adapter uses a dedicated PIO-SPI bus. Do not connect it to either
+hardware module SPI bus, and do not power it from 5 V.
+
+| Color | Breakout pin | Core pin | Signal |
+| --- | --- | --- | --- |
+| Red | `3V` | `3V3` | Power |
+| Black | `GND` | `GND` | Ground |
+| Yellow | `CLK` | `GP27` | SPI clock |
+| White | `DO` | `GP28` | SPI MISO, card to core |
+| Green | `DI` | `GP29` | SPI MOSI, core to card |
+| Purple | `CS` | `GP30` | Chip select, active low |
+| White (flagged with tape) | `DET` | `GP34` | Card-detect switch, card to core |
+
+Leave `DAT2` and the remaining SDIO pins unconnected. Confirm the `DET` label
+and switch polarity against the specific board in hand (see
+[docs/specs/sd-storage.md](../docs/specs/sd-storage.md) "Prototype SPI
+pinout") before relying on it for card presence.
+
+The SD probe report is printed at startup on both USB CDC and the Pico SDK's
+default UART0 stdio at 115200 baud, 8 data bits, no parity, 1 stop bit. Connect
+the UART adapter's RX to core `GP0` (UART0 TX) and share `GND`; leave core
+`GP1` (UART0 RX) disconnected for this read-only test.
+
 ## Assembly sequence
 
 1. Build one PGA2350 carrier and verify socket fit, power, RUN, BOOTSEL, SWD,

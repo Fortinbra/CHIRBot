@@ -7,6 +7,9 @@
 Firmware for the CHIRBot core board (RP2350B). Responsibilities:
 
 - **SPI matrix switch (main)** — routes TASD-packetized input between sources
+- **microSD storage** — mounts and lists the FAT filesystem; type `FORMAT SD`
+  followed by Enter on the USB/UART console to erase the card and create a
+  fresh FAT32 filesystem
   (input module, PC stream, microSD playback) and sinks (output module,
   visualization, microSD recording); ~1 ms is an eventual target, not the
   current PoC gate

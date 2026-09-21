@@ -51,4 +51,8 @@ private:
 uint16_t rgb565(uint8_t r, uint8_t g, uint8_t b);
 uint16_t rainbow565(float hue_degrees);
 
+// Shows the first pressed NES/SNES-style button, centered, one at a time.
+// Shared by the live relay path and TASD file playback.
+void draw_nes_button_state(St7735Display &display, uint8_t state);
+
 }  // namespace chirbot::display
