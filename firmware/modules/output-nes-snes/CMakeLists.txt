@@ -3,6 +3,7 @@ set(OUTPUT_NES_SNES_TARGET output_nes_snes)
 add_executable(${OUTPUT_NES_SNES_TARGET}
     src/main.cpp
 )
+chirbot_enable_strict_warnings(${OUTPUT_NES_SNES_TARGET})
 
 pico_generate_pio_header(${OUTPUT_NES_SNES_TARGET}
     ${CMAKE_CURRENT_SOURCE_DIR}/src/controller_output.pio

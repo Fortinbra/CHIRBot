@@ -7,6 +7,7 @@ add_executable(${INPUT_NES_SNES_TARGET}
     src/spi_subnode.cpp
     src/tasd_wrapper.cpp
 )
+chirbot_enable_strict_warnings(${INPUT_NES_SNES_TARGET})
 
 # Pull in our includes
 target_include_directories(${INPUT_NES_SNES_TARGET} PRIVATE

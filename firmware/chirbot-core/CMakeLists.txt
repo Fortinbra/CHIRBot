@@ -19,6 +19,7 @@ add_executable(chirbot_core
 	${FATFS_BUILD_DIR}/ff.c
 	${FATFS_BUILD_DIR}/ffunicode.c
 )
+chirbot_enable_strict_warnings(chirbot_core)
 
 target_include_directories(chirbot_core PRIVATE
 	${CMAKE_CURRENT_SOURCE_DIR}/include

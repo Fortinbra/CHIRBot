@@ -146,6 +146,13 @@ void St7735Display::write_data_buffer(const uint8_t *data, size_t length)
 
 void St7735Display::init()
 {
+    static constexpr uint8_t frame_control[] = {0x01, 0x2C, 0x2D};
+    static constexpr uint8_t frame_control_3[] = {0x01, 0x2C, 0x2D, 0x01, 0x2C, 0x2D};
+    static constexpr uint8_t power_control_1[] = {0xA2, 0x02, 0x84};
+    static constexpr uint8_t power_control_3[] = {0x0A, 0x00};
+    static constexpr uint8_t power_control_4[] = {0x8A, 0x2A};
+    static constexpr uint8_t power_control_5[] = {0x8A, 0xEE};
+
     gpio_init(pins_.clock);
     gpio_set_dir(pins_.clock, GPIO_OUT);
     gpio_init(pins_.mosi);
@@ -176,25 +183,25 @@ void St7735Display::init()
     sleep_ms(255);
 
     write_command(0xB1);  // FRMCTR1
-    write_data_buffer((const uint8_t[]){0x01, 0x2C, 0x2D}, 3);
+    write_data_buffer(frame_control, sizeof(frame_control));
     write_command(0xB2);  // FRMCTR2
-    write_data_buffer((const uint8_t[]){0x01, 0x2C, 0x2D}, 3);
+    write_data_buffer(frame_control, sizeof(frame_control));
     write_command(0xB3);  // FRMCTR3
-    write_data_buffer((const uint8_t[]){0x01, 0x2C, 0x2D, 0x01, 0x2C, 0x2D}, 6);
+    write_data_buffer(frame_control_3, sizeof(frame_control_3));
 
     write_command(0xB4);  // INVCTR
     write_data(0x07);
 
     write_command(0xC0);  // PWCTR1
-    write_data_buffer((const uint8_t[]){0xA2, 0x02, 0x84}, 3);
+    write_data_buffer(power_control_1, sizeof(power_control_1));
     write_command(0xC1);  // PWCTR2
     write_data(0xC5);
     write_command(0xC2);  // PWCTR3
-    write_data_buffer((const uint8_t[]){0x0A, 0x00}, 2);
+    write_data_buffer(power_control_3, sizeof(power_control_3));
     write_command(0xC3);  // PWCTR4
-    write_data_buffer((const uint8_t[]){0x8A, 0x2A}, 2);
+    write_data_buffer(power_control_4, sizeof(power_control_4));
     write_command(0xC4);  // PWCTR5
-    write_data_buffer((const uint8_t[]){0x8A, 0xEE}, 2);
+    write_data_buffer(power_control_5, sizeof(power_control_5));
     write_command(0xC5);  // VMCTR1
     write_data(0x0E);
 
@@ -224,15 +231,18 @@ void St7735Display::set_address_window(int16_t x0, int16_t y0, int16_t x1, int16
 
 void St7735Display::set_address_window_raw(int16_t x0, int16_t y0, int16_t x1, int16_t y1)
 {
-    write_command(0x2A);  // CASET
-    write_data_buffer((const uint8_t[]){
+    const uint8_t column_data[] = {
         0x00, static_cast<uint8_t>(x0),
-        0x00, static_cast<uint8_t>(x1)}, 4);
+        0x00, static_cast<uint8_t>(x1)};
+    const uint8_t row_data[] = {
+        0x00, static_cast<uint8_t>(y0),
+        0x00, static_cast<uint8_t>(y1)};
+
+    write_command(0x2A);  // CASET
+    write_data_buffer(column_data, sizeof(column_data));
 
     write_command(0x2B);  // RASET
-    write_data_buffer((const uint8_t[]){
-        0x00, static_cast<uint8_t>(y0),
-        0x00, static_cast<uint8_t>(y1)}, 4);
+    write_data_buffer(row_data, sizeof(row_data));
 
     write_command(0x2C);  // RAMWR
 }

@@ -113,7 +113,8 @@ void run_controller_input(chirbot::display::St7735Display &display)
     uint32_t tasd_frames = 0;
     absolute_time_t next_report = make_timeout_time_ms(2000);
 
-    std::printf("CHIRBot core ready: SPI %u Hz, UART stdio\r\n", kModuleSpiBaud);
+    std::printf("CHIRBot core ready: SPI %" PRIu32 " Hz, UART stdio\r\n",
+                static_cast<uint32_t>(kModuleSpiBaud));
 
     while (true) {
         transfer_frame(kInputSpi, kInputChipSelectPin, request, received);

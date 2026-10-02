@@ -222,7 +222,7 @@ void play_file(St7735Display &display, const char *name)
     };
 
     tasd_packet_t packet;
-    tasd_result_t result;
+    tasd_result_t result = TASD_ERR_END;
     while (!aborted && (result = tasd_reader_next(&reader, &packet)) == TASD_OK) {
         if (packet.key == TASD_KEY_CONSOLE_REGION && packet.payload_len >= 1u &&
             packet.payload[0] == TASD_REGION_PAL) {
