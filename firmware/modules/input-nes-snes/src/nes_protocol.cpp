@@ -5,7 +5,7 @@
 namespace {
 
 constexpr uint kControllerLatchPin = 2;
-constexpr uint kControllerClockPin = 3;
+constexpr uint kControllerClockPin = 0;
 constexpr uint kControllerDataPin = 4;
 constexpr uint32_t kLatchPulseUs = 12;
 constexpr uint32_t kClockHalfPeriodUs = 6;

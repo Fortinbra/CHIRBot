@@ -26,18 +26,19 @@ lines are outside the current scope.
 The input module drives the controller latch and clock and samples its
 active-low serial data. The SPI link remains entirely at 3.3 V.
 
-| PGA2350 pin | Function | Direction at module | As-built interface |
-| ---: | --- | --- | --- |
-| GP2 | NES LATCH | Output | hiBCTR BSS138 shifter; physical channel and pull-ups TBD |
-| GP3 | NES CLOCK | Output | hiBCTR BSS138 shifter; physical channel and pull-ups TBD |
-| GP4 | NES DATA0 | Input | hiBCTR BSS138 shifter; physical channel and pull-ups TBD |
-| GP16 | SPI0 MISO | Output | Direct 3.3 V to SPIDriver or future core GP16 |
-| GP17 | SPI0 CSn | Input | Direct 3.3 V from SPIDriver or future core GP17 |
-| GP18 | SPI0 SCLK | Input | Direct 3.3 V from SPIDriver or future core GP18 |
-| GP19 | SPI0 MOSI | Input | Direct 3.3 V from SPIDriver or future core GP19 |
-| VB / USB | Module supply | Power input | USB-C breakout wiring TBD and must be continuity-verified |
-| 3V3 | Shifter low-side rail | Power output | Never apply an external voltage to this pin |
-| GND | Common reference | Power | Controller, SPIDriver, and module ground |
+| RJ45 pin | PGA2350 pin | Function | Direction at module | As-built interface |
+| ---: | ---: | --- | --- | --- |
+| 6 | GP2 | PXLatch / NES LATCH | Output | hiBCTR BSS138 shifter; physical channel and pull-ups TBD |
+| 8 | GP0 | PXClock / NES CLOCK | Output | hiBCTR BSS138 shifter; physical channel and pull-ups TBD |
+| 4 | GP4 | PXD0 / NES DATA0 | Input | hiBCTR BSS138 shifter; physical channel and pull-ups TBD |
+| 5 | NC | PXd1 / NES DATA1 | Not connected | Isolate at RJ45 breakout |
+| - | GP16 | SPI0 MISO | Output | Direct 3.3 V to SPIDriver or future core GP16 |
+| - | GP17 | SPI0 CSn | Input | Direct 3.3 V from SPIDriver or future core GP17 |
+| - | GP18 | SPI0 SCLK | Input | Direct 3.3 V from SPIDriver or future core GP18 |
+| - | GP19 | SPI0 MOSI | Input | Direct 3.3 V from SPIDriver or future core GP19 |
+| - | VB / USB | Module supply | Power input | USB-C breakout wiring TBD and must be continuity-verified |
+| - | 3V3 | Shifter low-side rail | Power output | Never apply an external voltage to this pin |
+| - | GND | Common reference | Power | Controller, SPIDriver, and module ground |
 
 Firmware sources of truth:
 
@@ -47,21 +48,22 @@ Firmware sources of truth:
 ## Output module pinout
 
 The output module samples latch and clock from the console and drives emulated,
-active-low controller data. The PIO program addresses CLOCK relative to LATCH,
-so GP3 must immediately follow GP2 unless the PIO configuration is changed.
+active-low controller data. LATCH and CLOCK are selected by absolute GPIO in
+PIO because their assigned pins are not adjacent.
 
-| PGA2350 pin | Function | Direction at module | Electrical interface |
-| ---: | --- | --- | --- |
-| GP2 | Console LATCH | Input | 5 V to 3.3 V through LVC125A |
-| GP3 | Console CLOCK | Input | 5 V to 3.3 V through LVC125A |
-| GP4 | Emulated DATA0 | Output | 3.3 V to 5 V through AHCT125 |
-| GP16 | SPI0 MOSI | Input | Direct 3.3 V from core GP15 |
-| GP17 | SPI0 CSn | Input | Direct 3.3 V from core GP13 |
-| GP18 | SPI0 SCLK | Input | Direct 3.3 V from core GP14 |
-| GP19 | SPI0 MISO | Output | Direct 3.3 V to core GP12 |
-| VB | System supply | Power input | Regulated 5 V through branch fuse |
-| 3V3 | Translator supply | Power output | LVC125A only |
-| GND | Common reference | Power | Console, core, and system ground |
+| RJ45 pin | PGA2350 pin | Function | Direction at module | Electrical interface |
+| ---: | ---: | --- | --- | --- |
+| 6 | GP2 | PXLatch / Console LATCH | Input | 5 V to 3.3 V through LVC125A |
+| 8 | GP0 | PXClock / Console CLOCK | Input | 5 V to 3.3 V through LVC125A |
+| 4 | GP4 | PXD0 / Emulated DATA0 | Output | 3.3 V to 5 V through AHCT125 |
+| 5 | NC | PXd1 / Console DATA1 | Not connected | Isolate at RJ45 breakout |
+| - | GP16 | SPI0 MOSI | Input | Direct 3.3 V from core GP15 |
+| - | GP17 | SPI0 CSn | Input | Direct 3.3 V from core GP13 |
+| - | GP18 | SPI0 SCLK | Input | Direct 3.3 V from core GP14 |
+| - | GP19 | SPI0 MISO | Output | Direct 3.3 V to core GP12 |
+| - | VB | System supply | Power input | Regulated 5 V through branch fuse |
+| - | 3V3 | Translator supply | Power output | LVC125A only |
+| - | GND | Common reference | Power | Console, core, and system ground |
 
 Firmware source of truth:
 
@@ -121,9 +123,9 @@ Connect these signals:
 | +5 V | System 5 V after input branch fuse | Console 5 V interface rail only |
 | GND | System common ground | Console/system common ground |
 | LATCH / OUT0 | AHCT125 output from GP2 | LVC125A input to GP2 |
-| CLOCK | AHCT125 output from GP3 | LVC125A input to GP3 |
+| CLOCK | AHCT125 output from GP0 | LVC125A input to GP0 |
 | DATA0 | LVC125A output to GP4 | AHCT125 output from GP4 |
-| DATA1 | Not connected | Not connected |
+| DATA1 | Not connected (RJ45 pin 5) | Not connected (RJ45 pin 5) |
 | DATA2 | Not connected | Not connected |
 
 Do not assign contact numbers from cable colors or an unverified online

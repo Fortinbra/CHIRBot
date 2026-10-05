@@ -24,7 +24,10 @@ Supported profiles:
 - Standard SNES: two input bytes, sixteen serial bits
 
 Core-facing pins are GP16 MOSI input, GP17 CS, GP18 SCLK, and GP19 MISO output.
-Console-facing pins are GP2 LATCH input, GP3 CLOCK input, and GP4 DATA output.
+Console-facing pins are GP2 LATCH input, GP0 CLOCK input, and GP4 DATA output.
+The RJ45/8P8C contacts are 6 (LATCH), 8 (CLOCK), and 4 (DATA0); contact 5
+(DATA1) is not connected to a GPIO. The PIO program selects LATCH and CLOCK by
+absolute GPIO number because they are not adjacent.
 See the [NES-to-UART scenario](../../../docs/specs/nes-to-uart-scenario.md) for
 the complete three-board wiring and level-shifter requirements.
 

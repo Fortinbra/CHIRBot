@@ -12,9 +12,12 @@ See [firmware/modules/README.md](../README.md) and
 
 ## Prototype implementation
 
-The current image polls an NES controller on GP2/GP3/GP4, emits a TASD
+The current image polls an NES controller on GP0/GP2/GP4, emits a TASD
 `INPUT_MOMENT` whenever the button state changes, and serves the latest frame
 as an SPI0 subnode. SNES polling is not implemented yet.
+
+The controller signals use RJ45/8P8C contacts 8 (CLOCK, GP0), 6 (LATCH,
+GP2), and 4 (DATA0, GP4). Contact 5 (DATA1) is not connected to a GPIO.
 
 See the [NES-to-UART scenario](../../../docs/specs/nes-to-uart-scenario.md) for
 level-shifter requirements, wiring, and expected core UART output.

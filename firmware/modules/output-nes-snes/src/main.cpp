@@ -59,7 +59,6 @@ void start_controller_profile(ControllerProfile profile)
 
     sm_config_set_out_pins(&config, kConsoleDataPin, 1);
     sm_config_set_set_pins(&config, kConsoleDataPin, 1);
-    sm_config_set_in_pins(&config, kConsoleLatchPin);
     sm_config_set_out_shift(&config, true, false, 32);
 
     pio_gpio_init(controller_pio, kConsoleDataPin);
