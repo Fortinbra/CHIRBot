@@ -99,14 +99,58 @@ void init_output_spi_once()
     output_spi_ready = true;
 }
 
-void send_output_moment(uint8_t port, uint16_t controller_type, const uint8_t *inputs,
-                        uint32_t inputs_len, uint64_t index, uint32_t &sequence)
+uint32_t playback_sequence = 1u;
+
+bool exchange_playback(const uint8_t *request, uint32_t sequence, bool drain,
+                       bool allow_abort, bool &aborted)
+{
+    absolute_time_t deadline = make_timeout_time_ms(3000);
+    while (true) {
+        if (allow_abort && poll_button() == Button::Select) {
+            aborted = true;
+            return false;
+        }
+        uint8_t response[CHIRBOT_LINK_FRAME_SIZE];
+        gpio_put(kOutputChipSelectPin, 0);
+        spi_write_read_blocking(kOutputSpi, request, response, CHIRBOT_LINK_FRAME_SIZE);
+        gpio_put(kOutputChipSelectPin, 1);
+
+        chirbot_link_frame_view_t status{};
+        if (chirbot_link_decode(response, &status) == CHIRBOT_LINK_OK &&
+            status.type == CHIRBOT_LINK_FRAME_OUTPUT_STATUS &&
+            status.payload_length == 2u && status.payload[0] <= 1u &&
+            status.payload[1] <= CHIRBOT_LINK_PLAYBACK_QUEUE_CAPACITY) {
+            if (drain ? status.payload[1] == CHIRBOT_LINK_PLAYBACK_QUEUE_CAPACITY
+                      : status.payload[0] != 0u && status.sequence == sequence) {
+                return true;
+            }
+            // A stopped console is not a link failure. Wait without discarding
+            // queued reports, and keep SELECT responsive.
+            if ((drain || request[3] == CHIRBOT_LINK_FRAME_PLAYBACK_STATE) &&
+                status.payload[1] < CHIRBOT_LINK_PLAYBACK_QUEUE_CAPACITY) {
+                deadline = make_timeout_time_ms(3000);
+            }
+        }
+        if (absolute_time_diff_us(get_absolute_time(), deadline) <= 0) {
+            std::printf("Playback: output acknowledgement timeout seq=%" PRIu32 "\r\n",
+                        sequence);
+            return false;
+        }
+        sleep_ms(1);
+    }
+}
+
+bool send_output_moment(uint8_t port, uint16_t controller_type, const uint8_t *inputs,
+                        uint32_t inputs_len, uint64_t index, uint8_t type, bool &aborted)
 {
     chirbot_controller_state_t state{};
     state.port = port;
     state.controller_type = controller_type;
-    state.inputs_length = static_cast<uint8_t>(
-        inputs_len > CHIRBOT_CONTROLLER_MAX_INPUT_SIZE ? CHIRBOT_CONTROLLER_MAX_INPUT_SIZE : inputs_len);
+    if (inputs_len > CHIRBOT_CONTROLLER_MAX_INPUT_SIZE) {
+        std::printf("Playback: unsupported input length=%" PRIu32 "\r\n", inputs_len);
+        return false;
+    }
+    state.inputs_length = static_cast<uint8_t>(inputs_len);
     for (uint8_t i = 0; i < state.inputs_length; ++i) {
         state.inputs[i] = inputs[i];
     }
@@ -116,25 +160,25 @@ void send_output_moment(uint8_t port, uint16_t controller_type, const uint8_t *i
     uint16_t document_length = 0;
     if (chirbot_controller_tasd_encode(&state, document, sizeof(document), &document_length) !=
         CHIRBOT_CONTROLLER_TASD_OK) {
-        return;
+        std::printf("Playback: cannot encode port=%u controller=0x%04x inputs=%u\r\n",
+                    port, controller_type, state.inputs_length);
+        return false;
     }
 
     uint8_t frame[CHIRBOT_LINK_FRAME_SIZE];
-    if (chirbot_link_encode(frame, CHIRBOT_LINK_FRAME_TASD, sequence, document, document_length) !=
+    if (chirbot_link_encode(frame, type, playback_sequence, document, document_length) !=
         CHIRBOT_LINK_OK) {
-        return;
+        std::printf("Playback: cannot encode output frame\r\n");
+        return false;
     }
-    ++sequence;
-
-    gpio_put(kOutputChipSelectPin, 0);
-    spi_write_blocking(kOutputSpi, frame, CHIRBOT_LINK_FRAME_SIZE);
-    gpio_put(kOutputChipSelectPin, 1);
+    const bool accepted = exchange_playback(frame, playback_sequence, false, true, aborted);
+    ++playback_sequence;
+    return accepted;
 }
 
 // File-scope storage, not a local: main() runs with a small stack, and this
-// buffer is loaded once per selected file, not per call. Files larger than
-// this are played back truncated.
-constexpr size_t kPlaybackBufferCapacity = 393'216;  // 384 KiB
+// buffer is loaded once per selected file, not per call.
+constexpr size_t kPlaybackBufferCapacity = 458'752;  // 448 KiB
 uint8_t g_playback_buffer[kPlaybackBufferCapacity];
 
 void show_message(St7735Display &display, const char *line1, const char *line2, uint16_t color)
@@ -158,8 +202,15 @@ void play_file(St7735Display &display, const char *name)
         return;
     }
     std::printf("Playback: read %s, %zu of %zu bytes\r\n", name, length, file_size);
+    if (length != file_size) {
+        std::printf("Playback: file exceeds %zu-byte buffer; refusing truncated playback\r\n",
+                    kPlaybackBufferCapacity);
+        show_message(display, "File too large", name, rgb565(255, 60, 60));
+        sleep_ms(1500);
+        return;
+    }
 
-    tasd_header_t header;
+    tasd_header_t header{};
     if (tasd_read_header(g_playback_buffer, length, &header) != TASD_OK ||
         header.version != TASD_VERSION || header.g_keylen != TASD_G_KEYLEN) {
         std::printf("Playback: invalid header (version=%u keylen=%u)\r\n",
@@ -174,25 +225,21 @@ void play_file(St7735Display &display, const char *name)
 
     show_message(display, "Playing:", name, rgb565(255, 255, 255));
 
-    uint8_t port = 0;
+    constexpr uint8_t port = kPlaybackControllerPort;
     uint16_t controller_type = TASD_CTRL_NES_STANDARD;
-    uint32_t sequence = 0;
-    bool have_start = false;
-    uint8_t start_index_type = 0;
-    uint64_t first_index = 0;
     uint64_t chunk_frame = 0;
-    absolute_time_t start_time{};
-    // TASD movies commonly index by frame count (TASD_INDEX_FRAME), not
-    // milliseconds; NTSC is the default absent a CONSOLE_REGION packet.
-    double frames_per_second = 60.0988;
-
-    // A corrupt or unexpected index value must never hang playback forever;
-    // cap any single wait and let SELECT abort at any time.
-    constexpr uint32_t kMaxWaitMs = 3000;
     bool aborted = false;
+    bool failed = false;
+    bool started = false;
+    bool have_previous = false;
+    uint64_t previous_index = 0;
+    uint8_t previous_inputs[CHIRBOT_CONTROLLER_MAX_INPUT_SIZE]{};
+    uint32_t previous_length = 0;
     uint32_t moments_played = 0;
     uint32_t chunk_bytes_played = 0;
     uint32_t other_packets = 0;
+    uint16_t latch_filter_us = 0;
+    const uint64_t playback_start_us = time_us_64();
 
     // Real files can carry thousands of tiny INPUT_CHUNK packets; printing
     // one line per packet floods a slow UART and looks like a hang. Report
@@ -203,68 +250,132 @@ void play_file(St7735Display &display, const char *name)
             return;
         }
         std::printf("Playback: progress moments=%" PRIu32 " chunk_bytes=%" PRIu32
-                    " other=%" PRIu32 "\r\n",
-                    moments_played, chunk_bytes_played, other_packets);
+                    " other=%" PRIu32 " elapsed_ms=%" PRIu64 "\r\n",
+                    moments_played, chunk_bytes_played, other_packets,
+                    (time_us_64() - playback_start_us) / 1000u);
         next_progress_report = make_timeout_time_ms(500);
     };
 
-    auto wait_until = [&](absolute_time_t due_time) {
-        const absolute_time_t capped = delayed_by_ms(get_absolute_time(), kMaxWaitMs);
-        if (absolute_time_diff_us(capped, due_time) > 0) {
-            due_time = capped;
-        }
-        while (absolute_time_diff_us(get_absolute_time(), due_time) > 0) {
-            if (poll_button() == Button::Select) {
-                aborted = true;
-                return;
+    auto queue_state = [&](uint8_t input_port, const uint8_t *inputs,
+                           uint32_t inputs_len, uint64_t index) {
+        if (!started) {
+            const uint8_t filter[] = {
+                static_cast<uint8_t>(latch_filter_us >> 8u),
+                static_cast<uint8_t>(latch_filter_us)
+            };
+            uint8_t configuration[CHIRBOT_LINK_FRAME_SIZE];
+            chirbot_link_encode(configuration, CHIRBOT_LINK_FRAME_PLAYBACK_CONFIG,
+                                playback_sequence, filter, sizeof(filter));
+            const bool configured = exchange_playback(configuration, playback_sequence,
+                                                       false, true, aborted);
+            ++playback_sequence;
+            if (!configured) {
+                return false;
+            }
+            const uint8_t released[CHIRBOT_CONTROLLER_MAX_INPUT_SIZE]{};
+            started = true;
+            if (!send_output_moment(input_port, controller_type, released, inputs_len, 0,
+                                    CHIRBOT_LINK_FRAME_PLAYBACK_BEGIN, aborted)) {
+                return false;
             }
         }
+        uint8_t pressed[CHIRBOT_CONTROLLER_MAX_INPUT_SIZE]{};
+        for (uint32_t byte = 0; byte < inputs_len; ++byte) {
+            pressed[byte] = chirbot_controller_tasd_input_byte(inputs[byte]);
+        }
+        return send_output_moment(input_port, controller_type, pressed, inputs_len, index,
+                                  CHIRBOT_LINK_FRAME_PLAYBACK_STATE, aborted);
     };
 
     tasd_packet_t packet;
     tasd_result_t result = TASD_ERR_END;
-    while (!aborted && (result = tasd_reader_next(&reader, &packet)) == TASD_OK) {
-        if (packet.key == TASD_KEY_CONSOLE_REGION && packet.payload_len >= 1u &&
-            packet.payload[0] == TASD_REGION_PAL) {
-            frames_per_second = 50.0;
+    while (!aborted && !failed && (result = tasd_reader_next(&reader, &packet)) == TASD_OK) {
+        if (packet.key == TASD_KEY_NES_LATCH_FILTER ||
+            packet.key == TASD_KEY_SNES_LATCH_FILTER) {
+            if (packet.payload_len != 2u || started) {
+                std::printf("Playback: malformed or mid-playback latch filter\r\n");
+                failed = true;
+                continue;
+            }
+            latch_filter_us = static_cast<uint16_t>(
+                (static_cast<uint16_t>(packet.payload[0]) << 8u) | packet.payload[1]);
+            std::printf("Playback: latch_filter_us=%u\r\n", latch_filter_us);
+            continue;
+        }
+        if (packet.key == TASD_KEY_NES_CLOCK_FILTER ||
+            packet.key == TASD_KEY_SNES_CLOCK_FILTER) {
+            if (packet.payload_len != 1u || started) {
+                std::printf("Playback: malformed or mid-playback clock filter\r\n");
+                failed = true;
+                continue;
+            }
+            std::printf("Playback: warning: clock_filter_100ns=%u not yet implemented\r\n",
+                        packet.payload[0]);
             continue;
         }
         if (packet.key == TASD_KEY_PORT_CONTROLLER) {
             tasd_pkt_port_controller_t controller;
             if (tasd_decode_port_controller(&packet, &controller) == TASD_OK) {
-                port = controller.port;
-                controller_type = controller.type;
+                if (controller.port != port) {
+                    continue;
+                }
+                if (started && controller.type != controller_type) {
+                    std::printf("Playback: changing profile during playback is unsupported\r\n");
+                    failed = true;
+                } else {
+                    controller_type = controller.type;
+                }
+            } else {
+                std::printf("Playback: malformed controller packet\r\n");
+                failed = true;
             }
             continue;
         }
 
         // Real-world TASD movies (e.g. downloaded from tasd.io) typically
         // store the whole recording as one or a few bulk INPUT_CHUNK packets
-        // (one raw controller byte per frame) rather than a separate
+        // (one raw controller report per poll) rather than a separate
         // INPUT_MOMENT packet per frame, which is what the live SPI link
         // uses instead. Both are supported here.
         if (packet.key == TASD_KEY_INPUT_CHUNK) {
             tasd_pkt_input_chunk_t chunk;
             if (tasd_decode_input_chunk(&packet, &chunk) != TASD_OK || chunk.inputs_len == 0u) {
+                std::printf("Playback: malformed or empty input chunk\r\n");
+                failed = true;
                 continue;
             }
-            for (uint32_t i = 0; i < chunk.inputs_len && !aborted; ++i) {
-                if (!have_start) {
-                    have_start = true;
-                    start_time = get_absolute_time();
-                } else {
-                    const uint64_t due_ms = static_cast<uint64_t>(
-                        static_cast<double>(chunk_frame) * 1000.0 / frames_per_second);
-                    wait_until(delayed_by_ms(start_time, due_ms));
-                }
-                if (aborted) {
+            if (chunk.port != port) {
+                continue;
+            }
+            const uint32_t width = tasd_controller_input_size(controller_type);
+            if ((controller_type != TASD_CTRL_NES_STANDARD &&
+                 controller_type != TASD_CTRL_SNES_STANDARD) ||
+                width == 0u || chunk.inputs_len % width != 0u) {
+                std::printf("Playback: unsupported chunk port=%u type=0x%04x bytes=%" PRIu32 "\r\n",
+                            chunk.port, controller_type, chunk.inputs_len);
+                failed = true;
+                continue;
+            }
+            for (uint32_t i = 0; i < chunk.inputs_len && !aborted; i += width) {
+                if (chunk_frame == UINT64_MAX) {
+                    std::printf("Playback: frame index overflow\r\n");
+                    failed = true;
                     break;
                 }
-                send_output_moment(chunk.port, controller_type, &chunk.inputs[i], 1,
-                                   chunk_frame, sequence);
-                chirbot::display::draw_nes_button_state(display, chunk.inputs[i]);
+                if (!queue_state(chunk.port, &chunk.inputs[i], width, chunk_frame)) {
+                    failed = !aborted;
+                    break;
+                }
+                if (width == 1u) {
+                    chirbot::display::draw_nes_button_state(
+                        display, chirbot_controller_tasd_input_byte(chunk.inputs[i]));
+                }
+                previous_index = chunk_frame;
+                previous_length = width;
+                std::memcpy(previous_inputs, &chunk.inputs[i], width);
+                have_previous = true;
                 ++chunk_frame;
-                ++chunk_bytes_played;
+                chunk_bytes_played += width;
                 report_progress();
             }
             continue;
@@ -278,50 +389,85 @@ void play_file(St7735Display &display, const char *name)
 
         tasd_pkt_input_moment_t event;
         if (tasd_decode_input_moment(&packet, &event) != TASD_OK || event.inputs_len == 0u) {
+            std::printf("Playback: malformed or empty input moment\r\n");
+            failed = true;
+            continue;
+        }
+        if (event.port != port) {
             continue;
         }
 
-        // Pace playback against the recorded index. FRAME and MILLISECONDS
-        // both convert to elapsed wall-clock milliseconds since the first
-        // moment; any other index type falls back to a fixed per-packet
-        // delay so playback is still visible instead of racing through with
-        // no pacing at all.
-        if (event.index_type == TASD_INDEX_MILLISECONDS || event.index_type == TASD_INDEX_FRAME) {
-            if (!have_start) {
-                have_start = true;
-                start_index_type = event.index_type;
-                first_index = event.index;
-                start_time = get_absolute_time();
-            } else if (event.index_type == start_index_type) {
-                const uint64_t elapsed = event.index - first_index;
-                const uint64_t due_ms = event.index_type == TASD_INDEX_FRAME
-                    ? static_cast<uint64_t>(static_cast<double>(elapsed) * 1000.0 / frames_per_second)
-                    : elapsed;
-                wait_until(delayed_by_ms(start_time, due_ms));
-            }
-        } else {
-            sleep_ms(16);
+        if (event.index_type != TASD_INDEX_FRAME || event.port != port ||
+            event.index == UINT64_MAX ||
+            (have_previous && event.index <= previous_index)) {
+            std::printf("Playback: requires increasing frame indices on one port\r\n");
+            failed = true;
+            continue;
         }
-        if (aborted) {
+        if ((controller_type != TASD_CTRL_NES_STANDARD &&
+             controller_type != TASD_CTRL_SNES_STANDARD) ||
+            event.inputs_len != tasd_controller_input_size(controller_type)) {
+            std::printf("Playback: unsupported moment controller/length\r\n");
+            failed = true;
+            continue;
+        }
+        while (have_previous && event.index - previous_index > 1u) {
+            if (!queue_state(port, previous_inputs, previous_length, previous_index + 1u)) {
+                failed = !aborted;
+                break;
+            }
+            ++previous_index;
+            report_progress();
+        }
+        if (aborted || failed) {
             break;
         }
-
-        send_output_moment(port, controller_type, event.inputs, event.inputs_len,
-                           event.index, sequence);
+        if (!queue_state(port, event.inputs, event.inputs_len, event.index)) {
+            failed = !aborted;
+            break;
+        }
+        previous_index = event.index;
+        previous_length = event.inputs_len;
+        std::memcpy(previous_inputs, event.inputs, event.inputs_len);
+        have_previous = true;
+        chunk_frame = event.index + 1u;
         if (event.inputs_len == 1u) {
-            chirbot::display::draw_nes_button_state(display, event.inputs[0]);
+            chirbot::display::draw_nes_button_state(
+                display, chirbot_controller_tasd_input_byte(event.inputs[0]));
         }
         ++moments_played;
         report_progress();
     }
 
+    if (!started && !aborted && !failed && result == TASD_ERR_END) {
+        std::printf("Playback: no input reports for selected port=%u\r\n", port);
+        failed = true;
+    }
+    if (started) {
+        uint8_t request[CHIRBOT_LINK_FRAME_SIZE];
+        if (!aborted && !failed && result == TASD_ERR_END) {
+            chirbot_link_encode(request, CHIRBOT_LINK_FRAME_EMPTY, 0, nullptr, 0);
+            failed = !exchange_playback(request, 0, true, true, aborted) && !aborted;
+        }
+        if (aborted || failed || result != TASD_ERR_END) {
+            chirbot_link_encode(request, CHIRBOT_LINK_FRAME_PLAYBACK_STOP,
+                                playback_sequence, nullptr, 0);
+            if (!exchange_playback(request, playback_sequence, false, false, aborted)) {
+                std::printf("Playback: failed to stop output; queued states may remain\r\n");
+                failed = true;
+            }
+            ++playback_sequence;
+        }
+    }
+
     std::printf("Playback: %s (moments=%" PRIu32 " chunk_bytes=%" PRIu32
                 " other_packets=%" PRIu32 " result=%d)\r\n",
-                aborted ? "aborted" : "finished", moments_played, chunk_bytes_played,
+                failed ? "failed" : aborted ? "aborted" : "finished",
+                moments_played, chunk_bytes_played,
                 other_packets, static_cast<int>(result));
 
-    if (!aborted && result != TASD_ERR_END) {
-        show_message(display, "Parse error", name, rgb565(255, 60, 60));
+    if (failed || (!aborted && result != TASD_ERR_END)) {
+        show_message(display, "Playback error", name, rgb565(255, 60, 60));
         sleep_ms(1500);
     }
 }

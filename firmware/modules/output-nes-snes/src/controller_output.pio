@@ -1,41 +1,25 @@
-.program nes_controller_output
+.program controller_output
 .wrap_target
     pull block
     mov x, osr
-poll:
+latch:
     pull noblock
     mov x, osr
-    wait 1 gpio 2
-    mov osr, x
-    set y, 6
     out pins, 1
-bitloop:
-    wait 1 gpio 0
-    wait 0 gpio 0
+    jmp pin latch
+clock_low:
+    jmp pin latch
+    mov isr, null
+    in pins, 1
+    mov y, isr
+    jmp !y clock_high
+    jmp clock_low
+clock_high:
+    jmp pin latch
+    mov isr, null
+    in pins, 1
+    mov y, isr
+    jmp !y clock_high
     out pins, 1
-    jmp y-- bitloop
-    set pins, 1
-    wait 0 gpio 2
-    jmp poll
-.wrap
-
-.program snes_controller_output
-.wrap_target
-    pull block
-    mov x, osr
-poll:
-    pull noblock
-    mov x, osr
-    wait 1 gpio 2
-    mov osr, x
-    set y, 14
-    out pins, 1
-bitloop:
-    wait 1 gpio 0
-    wait 0 gpio 0
-    out pins, 1
-    jmp y-- bitloop
-    set pins, 1
-    wait 0 gpio 2
-    jmp poll
+    jmp clock_low
 .wrap

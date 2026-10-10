@@ -5,6 +5,7 @@
 
 constexpr uint32_t kModuleSpiBaud = CHIRBOT_LINK_SPI_BAUD;
 constexpr uint32_t kInputPollIntervalUs = 1'000;
+constexpr uint8_t kPlaybackControllerPort = 1;
 
 inline spi_inst_t *const kInputSpi = spi0;
 constexpr uint kInputMisoPin = 16;

@@ -16,7 +16,8 @@ production shared-bank topology is defined by
 - Core is the main and initiates one 64-byte transaction every 1 ms
 - Chip select is active low for exactly one frame
 - Input and output links are point-to-point and use independent chip selects
-- No ready/IRQ signal or response transaction is used in prototype v1
+- No ready/IRQ signal is used in prototype v1. Playback reads output status
+  on MISO during the same full-duplex transaction.
 
 The last item is a prototype limitation, not the production architecture.
 Production input links use the data-ready behavior below.
@@ -29,7 +30,7 @@ Every transfer is exactly 64 bytes. Multi-byte integers are big-endian.
 | ---: | ---: | --- |
 | 0 | 2 | Magic, ASCII `CH` |
 | 2 | 1 | Protocol version, currently `1` |
-| 3 | 1 | Type: `0` empty, `1` TASD document |
+| 3 | 1 | Type: `0` empty, `1` live TASD, `2` playback begin, `3` playback state, `4` output status, `5` playback stop, `6` playback config |
 | 4 | 4 | Sequence number |
 | 8 | 2 | Payload length, 0 through 50 |
 | 10 | 50 | Payload followed by zero padding |
@@ -41,6 +42,51 @@ and forwards the original validated frame unchanged to the output link.
 
 The shared implementation is in
 `firmware/chirbot-common/include/chirbot/link_protocol.h`.
+
+## Prototype playback flow control
+
+Type 6 carries a two-byte big-endian latch-filter interval in microseconds
+(0..65535). The core sends and waits for its acknowledgement before each begin,
+including zero when a file has no filter. It takes effect only at the next
+begin, not during the current report. Duplicate configuration retries are
+ignored like other commands. Both images must support type 6; an older output
+image times out explicitly rather than silently ignoring the file's filter.
+
+Types 2 and 3 carry the same complete controller-state TASD document as type 1.
+Begin selects the validated port/profile, clears any previous playback queue,
+and initializes released buttons and the configured LATCH filter.
+Playback state appends one report to the
+four-entry PIO TX FIFO. It is acknowledged only after validation and enqueue;
+a full queue leaves the acknowledgement unchanged. Live type-1 reports accept
+input-module port 0; playback types 2/3 accept movie player-1 port 1. Both route
+to the same physical output connector; other ports are ignored. Profiles must
+not change within playback.
+
+The output returns type 4 in every transaction. Its sequence is the last
+accepted command sequence. Its two-byte payload is:
+
+| Byte | Meaning |
+| ---: | --- |
+| 0 | `0` no command acknowledged yet; `1` sequence is valid |
+| 1 | Free playback FIFO slots, 0 through 4 (4 outside playback mode) |
+
+Status is prepared before receiving the current command, so acknowledgement
+arrives on a later transaction. The core waits at least 1 ms between transactions
+and retries an unacknowledged command with the same sequence. The output ignores
+duplicates of the last accepted command (same type and sequence), including
+begin and stop; retries cannot reset or duplicate the queue. Core sequences
+continue across file selections.
+
+Type 0 polls status without enqueueing. End-of-file waits until all four slots
+are free, meaning the final report has been latched. Type 5 has no payload,
+discards queued reports, releases buttons, and returns to live mode. A new
+type-1 live frame also returns to latest-state mode.
+
+A stopped console is allowed to leave playback blocked indefinitely, with
+SELECT still serviced. Missing/corrupt output status or an unacknowledged command
+with an empty queue times out after three seconds and reports a playback error.
+Both core and output firmware must be updated together; older output firmware
+does not acknowledge playback commands.
 
 ## Production discovery and data-ready requirements
 

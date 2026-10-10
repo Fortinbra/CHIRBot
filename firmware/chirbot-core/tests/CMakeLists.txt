@@ -1,0 +1,13 @@
+cmake_minimum_required(VERSION 3.13)
+project(chirbot_display_tests CXX)
+set(CMAKE_CXX_STANDARD 17)
+enable_testing()
+
+add_executable(test_nes_display test_nes_display.cpp ../src/st7735_display.cpp)
+target_include_directories(test_nes_display PRIVATE stubs ../include)
+if(MSVC)
+    target_compile_options(test_nes_display PRIVATE /W4 /WX)
+else()
+    target_compile_options(test_nes_display PRIVATE -Wall -Wextra -Werror)
+endif()
+add_test(NAME nes_display COMMAND test_nes_display)

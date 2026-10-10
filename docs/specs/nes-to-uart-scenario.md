@@ -89,6 +89,20 @@ Do not enable GPIO outputs on the receiving sides.
   console-side DATA pull-up is still needed for the disabled no-buttons state.
   Permanently tying OE to 3.3 V does not satisfy output reset safety.
 
+The bench fixture has returned to BSS138. Current output firmware leaves GP10
+as an unused input with a pull-down, never drives OE high, and disables the
+internal pulls on GP2/GP0 in favor of the BSS board's external rail pull-ups.
+Leave GP10 disconnected. GP4 remains DATA output with unchanged NES/SNES
+polarity; GP2 remains LATCH input and GP0 CLOCK input. BSS has no OE or
+firmware-controlled isolation: power down both devices before rewiring and
+avoid connected signals with an unpowered translator rail.
+
+The former TXS trial used active-high GP10 OE after serializer initialization,
+with an external reset pull-down and console 5 V present before module boot.
+That auto-enable behavior has been removed; the current image must not be
+used to enable a TXS fixture. Neither trial qualifies cable timing or replaces
+the fixed-direction-buffer acceptance path.
+
 **Breakout-specific evidence:**
 
 | Candidate | Verified documentation | Qualification caveat |
@@ -197,17 +211,32 @@ Hold the DATA translator disabled during reset and provide a weak pull-up on
 the console-facing DATA line so reset represents no buttons pressed. Do not
 join console 5 V to system 5 V during this prototype test; connect grounds.
 
+For output-module diagnostics, connect GP6 (UART1 TX) to a 3.3 V serial
+adapter's RX and share ground. GP5 is UART1 RX (optional adapter TX).
+Use 115200 baud, 8N1, no flow control; leave adapter power disconnected.
+USB CDC logging remains enabled as well.
+The output's `kControllerPort` currently selects port 1 for player-1 file
+playback. For this live-input scenario, set it to 0 before building/flashing
+the output, matching the input module's port-zero encoder. Other player ports
+are ignored rather than merged into the same controller DATA line.
+
 ## Data flow
 
 1. The input module latches and clocks eight NES bits approximately once per
    core poll.
-2. Active-low wire data is converted to the active-high TASD button byte.
+2. Active-low wire data is converted to the internal active-high serial-order
+   button byte. The TASD codec reverses/inverts it for the standard active-low,
+   MSB-first file/link representation.
 3. A changed state becomes a TASD `INPUT_MOMENT` in a versioned, CRC-protected
    64-byte SPI frame.
 4. The core polls the input link at 1 kHz, validates and parses a new frame,
    prints each TASD packet, and forwards the frame to SPI1.
 5. The output module validates the frame and caches its state. On each console
    latch it snapshots that state and shifts active-low DATA locally from PIO.
+   DATA advances on rising CLOCK, after the console's low-clock read window.
+   A standard NES report has eight button bits followed by low DATA (CPU value
+   1 after the console's inverter); standard SNES reports end in high DATA.
+   While LATCH stays high, NES reads keep returning the latest A state.
 
 ## Automated transport check
 
@@ -224,6 +253,8 @@ ctest --test-dir build/host-chirbot-common -C Debug --verbose
 
 This check covers the digital transport contract. The bench test below remains
 required to validate GPIO timing, level shifting, and console compatibility.
+The output module also has a standalone native waveform-test target; see its
+[test and bench instructions](../../firmware/modules/output-nes-snes/README.md).
 
 Example UART output after pressing A:
 

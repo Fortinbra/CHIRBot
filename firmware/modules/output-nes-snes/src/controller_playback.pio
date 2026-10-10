@@ -1,0 +1,38 @@
+.program controller_playback
+.wrap_target
+    pull block
+    mov x, osr
+    out pins, 1
+wait_latch:
+    jmp pin latch
+    jmp wait_latch
+latch:
+    mov osr, x
+    mov y, status
+    jmp !y next_report
+    jmp present
+next_report:
+    irq 0
+    irq 1
+    pull noblock
+    mov x, osr
+present:
+    out pins, 1
+held_latch:
+    jmp pin held_latch
+clock_low:
+    jmp pin latch
+    mov isr, null
+    in pins, 1
+    mov y, isr
+    jmp !y clock_high
+    jmp clock_low
+clock_high:
+    jmp pin latch
+    mov isr, null
+    in pins, 1
+    mov y, isr
+    jmp !y clock_high
+    out pins, 1
+    jmp clock_low
+.wrap

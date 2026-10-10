@@ -4,6 +4,17 @@
 
 #include "tasd.h"
 
+uint8_t chirbot_controller_tasd_input_byte(uint8_t value)
+{
+    uint8_t result = 0u;
+    for (uint8_t bit = 0u; bit < 8u; ++bit) {
+        if ((value & (1u << bit)) == 0u) {
+            result |= (uint8_t)(1u << (7u - bit));
+        }
+    }
+    return result;
+}
+
 static uint32_t supported_input_size(uint16_t controller_type)
 {
     if (controller_type != TASD_CTRL_NES_STANDARD &&
@@ -21,6 +32,7 @@ chirbot_controller_tasd_result_t chirbot_controller_tasd_encode(
 {
     uint8_t controller_payload[3];
     uint8_t input_payload[13];
+    uint8_t tasd_inputs[CHIRBOT_CONTROLLER_MAX_INPUT_SIZE];
     tasd_pkt_input_moment_t input;
     tasd_writer_t writer;
     tasd_result_t result;
@@ -47,7 +59,10 @@ chirbot_controller_tasd_result_t chirbot_controller_tasd_encode(
     input.hold = 0u;
     input.index_type = TASD_INDEX_MILLISECONDS;
     input.index = state->index;
-    input.inputs = state->inputs;
+    for (uint8_t byte = 0u; byte < state->inputs_length; ++byte) {
+        tasd_inputs[byte] = chirbot_controller_tasd_input_byte(state->inputs[byte]);
+    }
+    input.inputs = tasd_inputs;
     input.inputs_len = state->inputs_length;
     payload_length = tasd_encode_input_moment(
         &input, input_payload, sizeof(input_payload));
@@ -141,6 +156,9 @@ chirbot_controller_tasd_result_t chirbot_controller_tasd_decode(
         return CHIRBOT_CONTROLLER_TASD_ERR_MALFORMED;
     }
 
+    for (uint8_t byte = 0u; byte < decoded.inputs_length; ++byte) {
+        decoded.inputs[byte] = chirbot_controller_tasd_input_byte(decoded.inputs[byte]);
+    }
     *state = decoded;
     return CHIRBOT_CONTROLLER_TASD_OK;
 }

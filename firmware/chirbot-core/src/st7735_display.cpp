@@ -7,18 +7,15 @@ namespace chirbot::display {
 
 namespace {
 
-// The 132x162 GRAM is bigger than the 80x160 visible glass, so the visible
-// area sits at a fixed offset inside it. Since the panel is driven in
-// landscape here, CASET (our width/column axis) maps to native rows and
-// needs the native row offset, while RASET (our height/row axis) maps to
-// native columns and needs the native column offset. Adjust if a different
-// panel/tab is wired up.
-constexpr int16_t kColumnOffset = 1;
+// This panel's landscape column window is 0..159. Adding a column offset
+// overruns the right edge and shears streamed cells as their rows wrap.
+// The 80 visible rows start at row address 26.
+constexpr int16_t kColumnOffset = 0;
 constexpr int16_t kRowOffset = 26;
 
 // Full GRAM extent on the same swapped axes, used to blank the off-screen
 // margins so power-on noise outside the visible window is never displayed.
-constexpr int16_t kGramWidth = 162;
+constexpr int16_t kGramWidth = 160;
 constexpr int16_t kGramHeight = 132;
 
 // 5x7 glyphs. Each byte is one row, bits 4..0 are columns left to right
@@ -146,6 +143,7 @@ void St7735Display::write_data_buffer(const uint8_t *data, size_t length)
 
 void St7735Display::init()
 {
+    nes_buttons_visible_ = false;
     static constexpr uint8_t frame_control[] = {0x01, 0x2C, 0x2D};
     static constexpr uint8_t frame_control_3[] = {0x01, 0x2C, 0x2D, 0x01, 0x2C, 0x2D};
     static constexpr uint8_t power_control_1[] = {0xA2, 0x02, 0x84};
@@ -267,6 +265,7 @@ void St7735Display::fill_rect(int16_t x, int16_t y, int16_t width, int16_t heigh
         return;
     }
 
+    nes_buttons_visible_ = false;
     gpio_put(pins_.chip_select, 0);
     set_address_window(x, y, static_cast<int16_t>(x + width - 1), static_cast<int16_t>(y + height - 1));
 
@@ -354,40 +353,60 @@ uint16_t rainbow565(float hue_degrees)
     return rgb565(r, g, b);
 }
 
-namespace {
-
-const char *nes_button_label(uint8_t state)
-{
-    static const char *const labels[] = {
-        "A", "B", "SELECT", "START", "UP", "DOWN", "LEFT", "RIGHT"
-    };
-
-    for (uint8_t bit = 0; bit < 8u; ++bit) {
-        if ((state & (1u << bit)) != 0u) {
-            return labels[bit];
-        }
-    }
-    return "----";
-}
-
-}  // namespace
-
 void draw_nes_button_state(St7735Display &display, uint8_t state)
 {
-    const char *label = nes_button_label(state);
-    int16_t length = 0;
-    while (label[length] != '\0') {
-        ++length;
+    static constexpr char labels[8][7] = {
+        "A", "B", "SELECT", "START", "UP", "DOWN", "LEFT", "RIGHT"
+    };
+    const bool redraw_all = !display.nes_buttons_visible_;
+    if (!redraw_all && state == display.nes_button_state_) {
+        return;
     }
+    if (redraw_all) {
+        display.fill_screen(rgb565(0, 0, 0));
+    }
+    constexpr int16_t kCellWidth = St7735Display::kWidth / 4;
+    constexpr int16_t kCellHeight = 9;
+    for (uint8_t bit = 0; bit < 8u; ++bit) {
+        if (!redraw_all && ((state ^ display.nes_button_state_) & (1u << bit)) == 0u) {
+            continue;
+        }
+        const bool pressed = (state & (1u << bit)) != 0u;
+        const uint16_t foreground = pressed ? rgb565(255, 255, 255) : rgb565(100, 100, 100);
+        const uint16_t background = pressed ? rgb565(0, 100, 0) : rgb565(0, 0, 0);
+        uint8_t length = 0;
+        while (labels[bit][length] != '\0') {
+            ++length;
+        }
+        const int16_t text_x = static_cast<int16_t>((kCellWidth - (length * 6 - 1)) / 2);
+        const int16_t x = static_cast<int16_t>((bit % 4u) * kCellWidth);
+        const int16_t y = static_cast<int16_t>(29 + (bit / 4u) * 12);
 
-    constexpr uint8_t kScale = 2;
-    constexpr int16_t kGlyphWidth = 6 * kScale;
-    const int16_t text_width = static_cast<int16_t>(length * kGlyphWidth - kScale);
-    const int16_t x = static_cast<int16_t>((St7735Display::kWidth - text_width) / 2);
-    const int16_t y = static_cast<int16_t>((St7735Display::kHeight - 7 * kScale) / 2);
-
-    display.fill_screen(rgb565(0, 0, 0));
-    display.draw_text(x, y, label, rgb565(255, 255, 255), kScale);
+        // Stream each changed cell in one window; per-pixel commands and
+        // full-screen clears would starve console-clocked playback.
+        gpio_put(display.pins_.chip_select, 0);
+        display.set_address_window(x, y, static_cast<int16_t>(x + kCellWidth - 1),
+                                   static_cast<int16_t>(y + kCellHeight - 1));
+        gpio_put(display.pins_.data_command, 1);
+        for (int16_t row = 0; row < kCellHeight; ++row) {
+            for (int16_t column = 0; column < kCellWidth; ++column) {
+                const int16_t text_column = static_cast<int16_t>(column - text_x);
+                bool pixel_on = false;
+                if (row >= 1 && row <= 7 && text_column >= 0 &&
+                    text_column / 6 < length && text_column % 6 < 5) {
+                    const uint8_t *glyph = glyph_for(labels[bit][text_column / 6]);
+                    pixel_on = glyph != nullptr &&
+                        (glyph[row - 1] & (0x10u >> (text_column % 6))) != 0u;
+                }
+                const uint16_t color = pixel_on ? foreground : background;
+                display.spi_write_byte(static_cast<uint8_t>(color >> 8));
+                display.spi_write_byte(static_cast<uint8_t>(color));
+            }
+        }
+        gpio_put(display.pins_.chip_select, 1);
+    }
+    display.nes_button_state_ = state;
+    display.nes_buttons_visible_ = true;
 }
 
 }  // namespace chirbot::display

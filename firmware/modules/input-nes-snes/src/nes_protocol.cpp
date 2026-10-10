@@ -14,15 +14,18 @@ constexpr uint32_t kClockHalfPeriodUs = 6;
 
 void NESInputModule::setup_controller() {
     gpio_init(kControllerLatchPin);
-    gpio_set_dir(kControllerLatchPin, GPIO_OUT);
     gpio_put(kControllerLatchPin, 0);
+    gpio_set_dir(kControllerLatchPin, GPIO_OUT);
+    gpio_disable_pulls(kControllerLatchPin);
 
     gpio_init(kControllerClockPin);
+    gpio_put(kControllerClockPin, 1);
     gpio_set_dir(kControllerClockPin, GPIO_OUT);
-    gpio_put(kControllerClockPin, 0);
+    gpio_disable_pulls(kControllerClockPin);
 
     gpio_init(kControllerDataPin);
     gpio_set_dir(kControllerDataPin, GPIO_IN);
+    gpio_disable_pulls(kControllerDataPin);
 }
 
 uint16_t NESInputModule::read_controller() {
@@ -38,9 +41,9 @@ uint16_t NESInputModule::read_controller() {
             raw_state |= (uint8_t)(1u << bit);
         }
 
-        gpio_put(kControllerClockPin, 1);
-        sleep_us(kClockHalfPeriodUs);
         gpio_put(kControllerClockPin, 0);
+        sleep_us(kClockHalfPeriodUs);
+        gpio_put(kControllerClockPin, 1);
         sleep_us(kClockHalfPeriodUs);
     }
 

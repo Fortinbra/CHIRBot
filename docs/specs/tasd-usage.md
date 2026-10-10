@@ -29,27 +29,35 @@ Each SPI type-1 payload is a complete, independently parseable TASD document:
 2. `PORT_CONTROLLER` for port 0 with controller type `NES_STANDARD` (`0x0101`).
 3. One `INPUT_MOMENT` for port 0.
 
-The input moment uses millisecond indexing from input-module boot. Its input is
-one active-high byte in NES serial order:
+The input moment uses millisecond indexing from input-module boot. TASD stores
+one active-low byte, with A in bit 7 through Right in bit 0:
 
 | Bit | Button |
 | ---: | --- |
-| 0 | A |
-| 1 | B |
-| 2 | Select |
-| 3 | Start |
-| 4 | Up |
-| 5 | Down |
-| 6 | Left |
-| 7 | Right |
+| 7 | A |
+| 6 | B |
+| 5 | Select |
+| 4 | Start |
+| 3 | Up |
+| 2 | Down |
+| 1 | Left |
+| 0 | Right |
+
+`FF` means released; `EF` means START only. The shared codec converts at
+serialization boundaries to/from the internal active-high serial-order layout
+(A in bit 0). Display and output helpers consume the internal layout, never raw
+TASD bytes. Live input and file playback use the same on-wire TASD format.
 
 An event is emitted on startup and whenever this byte changes. The live SPI
 envelope is defined separately in [SPI matrix protocol](spi-matrix-protocol.md).
 
 ### SNES output mapping
 
-The output module also accepts `SNES_STANDARD` (`0x0201`) with two active-high
-input bytes. Bits are shifted least-significant first in this provisional order:
+The output module also accepts `SNES_STANDARD` (`0x0201`). Both TASD input bytes
+are active-low, MSB-first: byte 0 contains B, Y, Select, Start, Up, Down, Left,
+Right; byte 1 contains A, X, L, R in bits 7..4, with bits 3..0 held at 1.
+The codec reverses/inverts each byte into the internal serial-order layout below.
+The serializer shifts these internal bits least-significant first:
 
 | Bit | Button |
 | ---: | --- |
@@ -73,3 +81,40 @@ for core playback and future SNES input support.
 The shared `chirbot_controller_tasd` codec owns this live controller-state
 contract. Input and output firmware use the same implementation, and its host
 pipeline test verifies NES and SNES documents through CHIRBot link framing.
+
+## Console-clocked file playback
+
+File playback uses the acknowledged playback commands in
+[SPI matrix protocol](spi-matrix-protocol.md), keeping up to four reports queued
+at the output. The console's LATCH, not a core timer or assumed frame rate,
+advances the recording. See [clock domains](clock-domains.md).
+
+`INPUT_CHUNK` is split into complete controller reports: one byte per NES poll,
+two bytes per SNES poll. A chunk with a partial report is rejected.
+Playback selects player 1 (`kPlaybackControllerPort = 1`), matching the output
+module's configured port. Other ports' metadata and reports are skipped; an
+interleaved two-player recording does not consume two polls per movie frame.
+Frame-indexed `INPUT_MOMENT` packets must have strictly increasing indices on
+the selected port. The first index is the recording origin; gaps after it queue
+repeats of the preceding state. Millisecond and other timebases are rejected,
+as are profile changes on the selected port during playback. This is a single-port prototype,
+not a multi-controller or subframe movie scheduler.
+
+The 448 KiB file buffer bounds read-ahead; larger files are rejected explicitly,
+never played truncated. Reports not yet sent remain
+in that buffer while the output queue is full. End-of-file waits for the queue
+to drain. On abort or playback error, the core requests an acknowledged stop
+that flushes the queue and releases buttons. Per-report output UART logging is
+disabled for playback to avoid delaying queue replenishment.
+
+NES/SNES `LATCH_FILTER` packets before input data are validated as two-byte
+big-endian microsecond intervals and sent to the output before playback begin.
+Repeated console polls inside the interval repeat the same input rather than
+consuming another report. Mid-playback filter changes are rejected.
+`3922M.tasd` requests 8000 us; ignoring this metadata can consume the recording
+many times too quickly when the game polls repeatedly.
+
+NES/SNES `CLOCK_FILTER` packets are length-checked and produce an explicit
+unsupported-filter warning (units: 100 ns). Clock filtering is not yet
+implemented. Matching the published movie duration additionally requires
+correct console/game/reset alignment; report counts alone do not prove sync.

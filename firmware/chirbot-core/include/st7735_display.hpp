@@ -37,6 +37,8 @@ public:
     void draw_text(int16_t x, int16_t y, const char *text, uint16_t color565, uint8_t scale);
 
 private:
+    friend void draw_nes_button_state(St7735Display &display, uint8_t state);
+
     void write_command(uint8_t command);
     void write_data(uint8_t data);
     void write_data_buffer(const uint8_t *data, size_t length);
@@ -46,12 +48,14 @@ private:
     void spi_write_byte(uint8_t byte);
 
     St7735Pins pins_;
+    bool nes_buttons_visible_ = false;
+    uint8_t nes_button_state_ = 0;
 };
 
 uint16_t rgb565(uint8_t r, uint8_t g, uint8_t b);
 uint16_t rainbow565(float hue_degrees);
 
-// Shows the first pressed NES/SNES-style button, centered, one at a time.
+// Shows all eight NES buttons from one report, highlighting every pressed bit.
 // Shared by the live relay path and TASD file playback.
 void draw_nes_button_state(St7735Display &display, uint8_t state);
 

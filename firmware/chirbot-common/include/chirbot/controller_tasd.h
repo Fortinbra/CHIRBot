@@ -22,10 +22,14 @@ typedef enum {
 typedef struct {
     uint8_t port;
     uint16_t controller_type;
-    uint8_t inputs[CHIRBOT_CONTROLLER_MAX_INPUT_SIZE];
+    uint8_t inputs[CHIRBOT_CONTROLLER_MAX_INPUT_SIZE]; // Active-high, serial order.
     uint8_t inputs_length;
     uint64_t index;
 } chirbot_controller_state_t;
+
+// TASD NES/SNES bytes are active-low, MSB-first; internal bytes are
+// active-high in serial order. The same conversion works in both directions.
+uint8_t chirbot_controller_tasd_input_byte(uint8_t value);
 
 chirbot_controller_tasd_result_t chirbot_controller_tasd_encode(
     const chirbot_controller_state_t *state,

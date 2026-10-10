@@ -1,0 +1,8 @@
+.program controller_latch_filter
+.wrap_target
+    wait 1 irq 1
+    mov y, x
+delay:
+    jmp y-- delay
+    irq clear 0
+.wrap

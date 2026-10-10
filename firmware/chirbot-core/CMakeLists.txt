@@ -7,8 +7,7 @@ configure_file(${FATFS_SOURCE_DIR}/diskio.h ${FATFS_BUILD_DIR}/diskio.h COPYONLY
 configure_file(${FATFS_SOURCE_DIR}/ffunicode.c ${FATFS_BUILD_DIR}/ffunicode.c COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/ffconf.h ${FATFS_BUILD_DIR}/ffconf.h COPYONLY)
 
-# Console is the physical UART (via a debug probe or similar adapter); no
-# USB console/mass storage for now, to keep bring-up simple.
+# Diagnostics are available through both the physical UART and USB CDC.
 add_executable(chirbot_core
 	src/main.cpp
 	src/st7735_display.cpp
@@ -20,6 +19,9 @@ add_executable(chirbot_core
 	${FATFS_BUILD_DIR}/ffunicode.c
 )
 chirbot_enable_strict_warnings(chirbot_core)
+target_compile_definitions(chirbot_core PRIVATE
+	PICO_STDIO_USB_STDOUT_TIMEOUT_US=0
+)
 
 target_include_directories(chirbot_core PRIVATE
 	${CMAKE_CURRENT_SOURCE_DIR}/include
@@ -36,5 +38,5 @@ target_link_libraries(chirbot_core PRIVATE
 )
 
 pico_enable_stdio_uart(chirbot_core 1)
-pico_enable_stdio_usb(chirbot_core 0)
+pico_enable_stdio_usb(chirbot_core 1)
 pico_add_extra_outputs(chirbot_core)

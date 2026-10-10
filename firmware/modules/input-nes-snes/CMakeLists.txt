@@ -8,6 +8,8 @@ add_executable(${INPUT_NES_SNES_TARGET}
     src/tasd_wrapper.cpp
 )
 chirbot_enable_strict_warnings(${INPUT_NES_SNES_TARGET})
+target_compile_definitions(${INPUT_NES_SNES_TARGET} PRIVATE
+    PICO_STDIO_USB_STDOUT_TIMEOUT_US=0)
 
 # Pull in our includes
 target_include_directories(${INPUT_NES_SNES_TARGET} PRIVATE

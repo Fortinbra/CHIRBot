@@ -5,6 +5,7 @@
 #include <cstring>
 
 #include "chirbot/link_protocol.h"
+#include "chirbot/controller_tasd.h"
 #include "chirbot/link_spi.h"
 #include "hardware/gpio.h"
 #include "hardware/spi.h"
@@ -56,7 +57,8 @@ void update_display_from_event(const tasd_packet_t &packet,
     }
     tasd_pkt_input_moment_t event;
     if (tasd_decode_input_moment(&packet, &event) == TASD_OK && event.inputs_len == 1u) {
-        chirbot::display::draw_nes_button_state(display, event.inputs[0]);
+        chirbot::display::draw_nes_button_state(
+            display, chirbot_controller_tasd_input_byte(event.inputs[0]));
     }
 }
 
