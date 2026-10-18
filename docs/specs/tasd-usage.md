@@ -75,12 +75,13 @@ The serializer shifts these internal bits least-significant first:
 | 11 | R |
 | 12-15 | Inactive/reserved |
 
-The current input module emits NES data only. The SNES mapping is implemented
-for core playback and future SNES input support.
+The current NES input prototype emits NES data only. SNES input support is
+planned for the consolidated NES/SNES module family.
 
 The shared `chirbot_controller_tasd` codec owns this live controller-state
-contract. Input and output firmware use the same implementation, and its host
-pipeline test verifies NES and SNES documents through CHIRBot link framing.
+contract. Both selected roles of a protocol-specific module use the same TASD
+representation; its host pipeline test verifies NES and SNES documents
+through CHIRBot link framing.
 
 ## Console-clocked file playback
 

@@ -94,20 +94,20 @@ The production protocol must preserve these rules when its frame types are
 defined:
 
 1. The core is the sole SPI controller/main (master) and initiates every transaction. A module only returns data while clocked by the core.
-2. Production uses two independent shared SPI banks: four input slots and four output slots. SCLK, MOSI, and MISO are shared within each bank, and every slot has a dedicated chip select. The core asserts exactly one chip select in a bank for a transaction. All unselected modules keep MISO high-impedance.
+2. Production uses SPI links controlled exclusively by the core. The final carrier topology is open: the previous design used separate shared input and output banks, while dual-role modules may use universal slots or retain separate banks. Within any shared bank, SCLK, MOSI, and MISO are shared and each slot has a dedicated chip select. The core asserts at most one chip select in a bank for a transaction. All unselected modules keep MISO high-impedance.
 3. On startup, after a module reset, and whenever presence detection indicates a newly available module, the core issues a descriptor query before any TASD exchange.
-4. Every input and output module responds with the descriptor defined by the [module-interface specification](module-interface.md). Discovery must allow the core to validate module type, identity, link-version compatibility, and capabilities without interpreting TASD payloads.
-5. An input module asserts its dedicated per-slot data-ready/IRQ signal whenever unread TASD data is pending. The assertion is level-sensitive and remains active until the core clocks transactions that retrieve or explicitly discard all pending data. The core may poll as a bounded recovery mechanism, but normal operation must not depend on continuous polling.
+4. Every dual-role module responds with the descriptor defined by the [module-interface specification](module-interface.md). Discovery must allow the core to validate its boot-latched role, identity, link-version compatibility, native protocol, and capabilities without interpreting TASD payloads.
+5. A module selected for input role asserts a data-ready/IRQ signal whenever unread TASD data is pending. The assertion is level-sensitive and remains active until the core clocks transactions that retrieve or explicitly discard all pending data. The core may poll as a bounded recovery mechanism, but normal operation must not depend on continuous polling. How a universal carrier slot routes this role-dependent signal remains open.
 6. An IRQ assertion only requests service; it does not transfer data or change SPI ownership. The core decides when to select the module and clock each read.
 7. Output TASD delivery is core-initiated and requires no output-module data-ready signal in the normal path.
 8. The reserved I2C segments are outside this protocol. They remain disabled and cannot be required for discovery, compatibility checks, or TASD exchange.
 
 Exact command values, descriptor encoding, queue-depth reporting, IRQ
-electrical polarity, per-bank scheduling, timeouts, and recovery behavior
-remain to be specified before this document can advance beyond prototype
-status. The production timing budget must cover four pending input modules and
-time-sensitive output writes; the prototype's 2 MHz fixed-frame cadence is not
-automatically a valid production limit.
+electrical polarity, carrier topology, bus scheduling, timeouts, and recovery
+behavior remain to be specified before this document can advance beyond
+prototype status. The production timing budget must cover pending input
+modules and time-sensitive output writes; the prototype's 2 MHz fixed-frame
+cadence is not automatically a valid production limit.
 
 ## Still required before acceptance
 

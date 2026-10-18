@@ -19,6 +19,7 @@ targets after the path is working.
 | Document | Purpose |
 |---|---|
 | [Architecture](ARCHITECTURE.md) | System boundaries, component responsibilities, repository strategy, and open questions |
+| [System specification](SYSTEM_SPECIFICATION.md) | Consolidated behavior, interfaces, prototype pinouts, and open decisions |
 | [Roadmap](ROADMAP.md) | Ordered project milestones and near-term priorities |
 | [Design decisions](design/) | Architecture decision records (ADRs) for accepted choices and their rationale |
 | [Technical specifications](specs/) | Implementable contracts shared by firmware, hardware, and host software |

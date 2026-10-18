@@ -2,6 +2,12 @@
 
 > **Status:** NES/SNES output prototype implemented.
 
+This is the existing output-only prototype image. The target architecture
+consolidates NES/SNES input and output into one protocol-family firmware with
+a physical role selector sampled at reset; that combined image is not
+implemented yet. See the
+[dual-role module decision](../../../docs/design/0004-dual-role-module-architecture.md).
+
 NES/SNES output module. Receives TASD-packetized SPI data from the core and
 responds to the console's latch/clock as a native controller — 8-bit (NES) or
 16-bit (SNES) shifting. The

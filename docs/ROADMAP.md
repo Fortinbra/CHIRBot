@@ -56,7 +56,8 @@ implementation begins.
 ## 3. Productize the proven path
 
 - [ ] Design the core and first module PCBs from the stabilized interface
-- [ ] Design and validate the passive four-input/four-output carrier PCB
+- [ ] Select a carrier topology for boot-selected dual-role modules, then
+      design and validate the passive carrier PCB
 - [ ] Add repeatable firmware builds, tests, release artifacts, and flashing docs
 - [ ] Implement the minimum host configuration and TASD inspection workflow
 - [ ] Validate cost targets with sourced BOMs and small production quantities

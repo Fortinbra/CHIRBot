@@ -2,6 +2,12 @@
 
 > **Status:** NES-to-core UART prototype implemented.
 
+This is the existing input-only prototype image. The target architecture
+consolidates NES/SNES input and output into one protocol-family firmware with
+a physical role selector sampled at reset; that combined image is not
+implemented yet. See the
+[dual-role module decision](../../../docs/design/0004-dual-role-module-architecture.md).
+
 NES/SNES controller input module. Polls native NES (8-bit) / SNES (16-bit)
 controllers over their 5 V latched serial protocol and forwards input as
 TASD-packetized SPI data to the core. Requires level shifting between the 5 V

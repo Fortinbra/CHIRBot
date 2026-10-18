@@ -2,25 +2,29 @@
 
 > **Status:** Outline. Not yet implementable.
 
-This specification will define the electrical, mechanical, power, and
-identification contract for every module connected to the passive CHIRBot
-carrier. The carrier and its four-input/four-output topology are accepted in
-[design decision 0003](../design/0003-carrier-and-multislot-bus-topology.md),
-but the connector and physical envelope remain open.
+This specification defines the shared electrical, mechanical, power, and
+identification contract for protocol-specific modules that can operate as
+either input or output. Each module has a physical role selector sampled at
+boot/reset and one shared native-device connector, used with a role-appropriate
+cable or adapter where necessary. The production carrier topology, connector,
+and physical envelope remain open. The earlier four-input/four-output
+topology is recorded in
+[design decision 0003](../design/0003-carrier-and-multislot-bus-topology.md);
+module consolidation is recorded in
+[design decision 0004](../design/0004-dual-role-module-architecture.md).
 
 ## Accepted requirements
 
-- The core is the SPI controller/main (master), and every module is an SPI
-  peripheral/subnode. Modules cannot initiate SPI transactions.
-- The carrier provides one shared SPI bank for four input slots and another
-  shared SPI bank for four output slots. SCLK, MOSI, and MISO are shared within
-  a bank; each slot receives one dedicated chip-select signal from the core.
+- The core is the sole SPI controller/main, and every module is an SPI
+  peripheral/subnode. The carrier remains passive; whether it uses separate
+  input/output banks or universal slots is undecided.
 - A module must keep MISO high-impedance whenever its chip select is inactive,
   including during reset and power transitions. The carrier provides an
   external inactive-state pull for each chip select.
 - Every compliant module returns a self-description record when queried by the
   core. The record contains at least:
-  - module type: input or output
+  - selected role: input or output, reflecting the physical selector sampled
+    during startup
   - stable vendor and product identifiers
   - hardware revision and firmware version
   - minimum and maximum supported SPI link-protocol versions
@@ -28,23 +32,24 @@ but the connector and physical envelope remain open.
   - a length-delimited capability set for protocol-specific features
 - A serial number or other instance identifier may be supplied when a product
   needs per-unit configuration, but is not required for basic compatibility.
-- The core validates module type against the dock and negotiates a compatible
-  link-protocol version before TASD exchange. Unknown or incompatible modules
-  remain inactive and are reported to the user.
-- Every input dock provides a dedicated module-to-core data-ready/IRQ contact.
-  The signal is level-sensitive: an input module keeps it asserted while one
-  or more unread TASD records are pending and deasserts it only after the core
-  has retrieved or explicitly discarded all pending data.
-- Output modules do not use data-ready/IRQ for normal TASD delivery because the
-  core initiates output writes.
-- Each input and output slot carries 3.3 V SDA and SCL for a future I2C
-  management or expansion bus. Input and output banks are separate I2C
-  segments. I2C is currently reserved and disabled; module discovery and TASD
-  transport remain on SPI.
-- The carrier owns the single pull-up set for each I2C segment. Modules must
+- The core validates the selected role against slot/routing configuration and
+  negotiates a compatible link-protocol version before TASD exchange. Unknown
+  or incompatible modules remain inactive and are reported to the user.
+- Changing the role selector while powered does not change the running role.
+  The selector takes effect only after reset/restart; firmware reports the
+  latched role during discovery.
+- A module in input role asserts data-ready/IRQ while one or more unread TASD
+  records are pending, and deasserts it only after the core retrieves or
+  explicitly discards all pending data. Its physical routing depends on the
+  selected carrier topology. Output-role TASD delivery is core-initiated and
+  does not require data-ready/IRQ.
+- I2C SDA/SCL may be reserved for a future 3.3 V management or expansion bus.
+  Segment organization depends on the carrier topology. I2C is currently
+  disabled; discovery and TASD transport remain on SPI.
+- If I2C is carried, the carrier owns each segment's pull-up set. Modules must
   not populate fixed pull-ups by default, drive SDA or SCL high, back-power an
-  unpowered segment, or assume an address before a future revision defines the
-  I2C contract.
+  unpowered segment, or assume an address before a future revision defines
+  the I2C contract.
 
 ## Logical slot signals
 
@@ -56,8 +61,8 @@ Every module slot reserves these functions. Exact contact numbers remain open.
 | MOSI | Shared within bank | Core-to-module SPI data |
 | MISO | Shared within bank | Selected module only; high-impedance otherwise |
 | CS | Dedicated per slot | Core-controlled module selection |
-| IRQ/alert | Dedicated per slot | Required data-ready on inputs; reserved on outputs |
-| I2C SDA, SCL | Shared within bank | Reserved 3.3 V open-drain future bus |
+| IRQ/alert | Role-dependent; final routing open | Required data-ready in input role; not required for normal output delivery |
+| I2C SDA, SCL | Carrier-topology dependent | Reserved 3.3 V open-drain future bus |
 | Module supply | Distributed per slot | Voltage and budget pending |
 | Ground | Multiple contacts | Signal return and power return |
 
@@ -76,7 +81,13 @@ descriptor field meanings and the connector's electrical realization.
 - Shared-SPI loading, trace topology, termination, and per-slot fault isolation
 - I2C pull-up values, address registry, isolation, and stuck-bus recovery
 - Module PCB outline, keep-outs, connector datum, mounting, and retention
-- Input/output slot keying and behavior when a module is in the wrong slot
+- Carrier topology: separate role-specific banks or universal slots, including
+  how role-dependent IRQ and I2C contacts are routed
+- Behavior when a module's selected role is incompatible with its slot
+- Physical selector type, circuit, GPIO assignment, boot sampling, and reset
+  safety
+- Native connector family per protocol module and the required role-specific
+  cable/adapter
 - Power-off-only or hot-swap policy and the hardware that enforces it
 - Numeric registries and compatibility rules for identity and capability fields
 - Mechanical and electrical compliance checklist for community modules

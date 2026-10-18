@@ -1,27 +1,59 @@
-# NES input and output module hardware
+# NES/SNES dual-role module hardware
 
-> **Status:** The NES input fixture is assembled on wire-wrap protoboard.
-> Breakout models and exact native-interface channel mapping still require
-> verification. The output fixture, dedicated PCBs, production docking
-> connectors, and physical-console validation are not complete. Cost target:
-> less than $40 per module.
+> **Status:** The current input and output boards are separate prototype
+> fixtures. The accepted target is one protocol-specific module design that
+> supports both roles; that consolidated hardware has not yet been built or
+> electrically validated. Production docking connectors remain open. Cost
+> target: less than $40 per module.
 
-This document covers the input and output modules used by the three-board NES
-vertical slice. Each module uses a Pimoroni PGA2350 as an SPI subnode. The
-assembled input fixture uses a hiBCTR BSS138-based bidirectional level-shifter;
-the target output design uses fixed-direction 3.3 V/5 V buffers.
+This is the single hardware specification for the NES/SNES module family. The
+target module uses one RP2350B and one native-device connector per protocol
+family. A physical role selector is sampled at reset: input mode samples the
+attached controller; output mode emulates it from TASD. Use a role-appropriate
+cable or adapter with the shared connector. The module must not enable both
+native signal paths at once, and output signals must remain safe during reset.
+
+The current input/output prototype pinouts below are retained as bench wiring
+records only. Their separate fixtures do not define the consolidated board.
 
 The pin assignments below are prototype assignments, not the final CHIRBot
 dock pinout. Temporary point-to-point harnesses stand in for the board-to-board
 carrier slots that remain open in the
 [module-interface specification](../../docs/specs/module-interface.md).
 
-The current input firmware supports a standard NES controller. The output
-firmware supports standard NES and SNES TASD states, but this document only
-specifies the wired NES prototype. Accessories and additional controller data
-lines are outside the current scope.
+The current input firmware supports a standard NES controller. The separate
+output firmware supports standard NES and SNES TASD states. Physical SNES
+input and the consolidated role-selectable design are not implemented.
+Accessories and additional controller data lines are outside the current
+scope.
 
-## Input module pinout
+## Consolidated module interface (target)
+
+The following GPIO roles describe the current development-board prototype
+assignments for a future shared design; the selector pin and production dock
+contacts have not been assigned.
+
+| PGA2350 pin | Module-link function | Input role | Output role |
+| ---: | --- | --- | --- |
+| GP16 | SPI0 MISO | Output to core | Output to core |
+| GP17 | SPI0 CSn | Input from core | Input from core |
+| GP18 | SPI0 SCLK | Input from core | Input from core |
+| GP19 | SPI0 MOSI | Input from core | Input from core |
+| GP2 | Native LATCH | Drive through 3.3 V-to-5 V translation | Sample through 5 V-to-3.3 V translation |
+| GP0 | Native CLOCK | Drive through 3.3 V-to-5 V translation | Sample through 5 V-to-3.3 V translation |
+| GP4 | Native DATA0 | Sample through 5 V-to-3.3 V translation | Drive through 3.3 V-to-5 V translation |
+| TBD | Physical role selector | Sample input role at reset | Sample output role at reset |
+| GND | Signal/power return | Common reference | Common reference |
+
+Input and output role pins use different electrical directions. The hardware
+must ensure only the selected role can drive native lines and must establish
+safe inactive levels during reset and power transitions. The shared connector
+and role-appropriate cable/adapter must preserve the correct pin mapping and
+keep unrelated pins isolated. Select and qualify the translator circuitry
+against the actual native-device electrical requirements; the current BSS138
+input fixture is not qualified for production.
+
+## Existing input prototype pinout (bench reference)
 
 The input module drives the controller latch and clock and samples its
 active-low serial data. The SPI link remains entirely at 3.3 V.
@@ -45,7 +77,7 @@ Firmware sources of truth:
 - [NES GPIO assignments](../../firmware/modules/input-nes-snes/src/nes_protocol.cpp)
 - [Input SPI assignments](../../firmware/modules/input-nes-snes/src/spi_subnode.cpp)
 
-## Output module pinout
+## Existing output prototype pinout (bench reference)
 
 The output module samples latch and clock from the console and drives emulated,
 active-low controller data. LATCH and CLOCK are selected by absolute GPIO in
@@ -70,7 +102,7 @@ Firmware source of truth:
 - [Output GPIO and SPI assignments](../../firmware/modules/output-nes-snes/include/output_module_config.hpp)
 - [Console PIO implementation](../../firmware/modules/output-nes-snes/src/controller_output.pio)
 
-## Core SPI harnesses
+## Existing prototype SPI harnesses
 
 SPI uses mode 0 at 2 MHz with one fixed 64-byte transaction per poll. The
 prototype has no ready or interrupt signal and therefore does not satisfy the

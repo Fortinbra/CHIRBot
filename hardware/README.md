@@ -10,8 +10,8 @@ components.
 | Directory | Purpose |
 | --- | --- |
 | [chirbot-core-hw/](chirbot-core-hw/) | CHIRBot core board |
-| [chirbot-carrier-hw/](chirbot-carrier-hw/) | Passive four-input/four-output module carrier |
-| [modules/](modules/) | Input/output module boards (mirrors `firmware/modules/` naming) |
+| [chirbot-carrier-hw/](chirbot-carrier-hw/) | Passive module carrier; role-specific banks versus universal slots remain undecided |
+| [modules/](modules/) | Protocol-family dual-role module boards (mirrors `firmware/modules/` naming) |
 
 Planning documents:
 

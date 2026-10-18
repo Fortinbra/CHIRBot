@@ -6,7 +6,7 @@ software. Planned documents:
 | Spec | Contents | Status |
 | --- | --- | --- |
 | [SPI matrix protocol](spi-matrix-protocol.md) | Framing, shared-bank scheduling, controller/peripheral roles, discovery, descriptor encoding, data-ready service | prototype |
-| [Module interface](module-interface.md) | Carrier and slot pinouts, shared SPI/I2C electrical rules, mechanicals, power, descriptor fields and compatibility | outline |
+| [Module interface](module-interface.md) | Dual-role protocol modules, carrier topology alternatives, slot electrical rules, mechanics, power, role selection, and descriptors | outline |
 | [TASD usage](tasd-usage.md) | How CHIRBot uses or extends the [TASD format](https://tasd.io/) | prototype |
 | [Clock domains](clock-domains.md) | Poll-edge timing model and buffering behavior | outline |
 | [NES-to-UART scenario](nes-to-uart-scenario.md) | First end-to-end wiring and acceptance test | prototype |
